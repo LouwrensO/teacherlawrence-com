@@ -1,0 +1,2747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+</head>
+<body>
+
+  <!-- top nav. #fullNavLinks (Library/Path/Practice/Games/Create-your-own —
+       every "leave the current activity" escape hatch) is hidden for
+       students on the locked path (see dlApplyStudentChrome() below):
+       there's nowhere else to go, the path IS the app. Teachers/guests get
+       the full nav, unchanged. -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <span id="fullNavLinks">
+      <a class="nav-link" href="/" data-i18n="nav.backToLibrary">← Library</a>
+      <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+      <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+      <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    </span>
+    <!-- students on the locked path get everything above hidden by
+         dlApplyStudentChrome() (Library/Practice/Games are deliberate
+         escape hatches we don't want them wandering into), but they still
+         need a way back to their own Path/dashboard — this one stays
+         visible for them on purpose. -->
+    <a class="nav-link" id="studentPathLink" href="/path" style="display:none;" data-i18n="nav.path">Path</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+    <a class="nav-link cta" id="createOwnLink" href="/create" data-i18n="nav.createOwn">Create your own</a>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <!-- Present  /  Print & PDF  toggle  +  Korean switch -->
+  <div class="mode-toggle" id="modeToggle" style="display:none;">
+    <button id="tabPresent" class="on" onclick="showMode('present')" data-i18n="lesson.presentInClass">▶ Present in class</button>
+    <button id="tabPdf" onclick="showMode('pdf')" data-i18n="lesson.printPdf">🖨 Print &amp; PDF</button>
+    <button id="tabPractice" onclick="showMode('practice')" data-i18n="practice.tabLabel">🎙 Practice Speaking</button>
+    <button id="tabKo" class="ko-switch" style="display:none;" onclick="toggleKR()" data-i18n="lesson.translationShow">🇰🇷 Show Korean</button>
+    <button id="tabAssign" class="assign-btn" style="display:none;" onclick="openAssignHomework()" data-i18n="homework.assignBtn">📌 Assign homework</button>
+  </div>
+
+  <!-- Assign-homework picker (teachers) -->
+  <div id="assignModal" class="assign-modal" style="display:none;" onclick="if(event.target===this) closeAssignHomework()">
+    <div class="assign-card">
+      <h3 data-i18n="homework.assignTitle">Assign this lesson as homework</h3>
+      <p class="assign-sub" data-i18n="homework.assignSub">Pick a class — students in it will see this lesson under "My homework".</p>
+      <div id="assignClassList"><div class="assign-loading" data-i18n="homework.loadingClasses">Loading your classes…</div></div>
+      <button class="assign-close" onclick="closeAssignHomework()" data-i18n="homework.close">Close</button>
+    </div>
+  </div>
+
+  <!-- shown while the paywall gate is deciding; removed once it resolves -->
+  <div id="gateLoading" class="gate-loading">Loading…</div>
+
+  <!-- Floating record/stop control for whole-session recording (Step 8,
+       Read the Article): fixed to the screen so it stays reachable even
+       after scrolling down through a long article to keep reading —
+       students reported having to scroll back up just to press Finish.
+       Shared by every session-recorder instance (only one is ever active
+       at a time); createSessionRecorder() shows/hides/relabels it and
+       toggles the .on class between the idle "record" dot and the active
+       "stop" square. Carries one short visible word ("Record"/"Stop") —
+       students found the icon-only version unclear — kept deliberately
+       short (not the full aria-label/title text) so it still can't
+       wrap/overflow off a narrow phone screen. -->
+  <button id="floatingRecBtn" class="floating-rec-btn" style="display:none;" aria-label="" title="">
+    <span class="frb-icon" aria-hidden="true"></span>
+    <span class="frb-label" id="floatingRecBtnLabel" aria-hidden="true"></span>
+  </button>
+
+  <!-- Persistent layout: the step sidebar stays visible across ALL THREE
+       content modes below (Present / Print&PDF / Practice Speaking),
+       which just swap inside #mainStage via showMode() — previously the
+       sidebar lived only inside #presentView, so it vanished the moment
+       a student switched to Practice Speaking or Print/PDF, with no way
+       back except a top-nav tab. Now every step (including jumping
+       straight into Talk with AI / Speaking Homework) is one click away
+       no matter which mode is currently showing. -->
+  <div class="present-wrap" id="presentWrap" style="display:none;">
+    <aside class="steps" id="stepsSidebar">
+      <!-- Just the lesson title + current step position/name — the
+           itemized list of every step (with lock icons on ones not yet
+           reached) was removed for a simpler, more game-like feel; the
+           locked path's can't-skip-ahead enforcement (see go(),
+           furthestUnlockedIndex()) is untouched, this only affects what's
+           shown here. -->
+      <div class="steps-head">
+        <span class="steps-title" data-i18n="lesson.tasksLabel">Tasks</span>
+        <span class="steps-current" id="stepsCurrent"></span>
+      </div>
+
+    </aside>
+    <main class="slide-stage" id="mainStage">
+
+    <!-- PRESENT (Tasks) view -->
+    <div id="presentView">
+      <div class="slide" id="slide"></div>
+      <div class="slide-nav">
+        <button id="prevBtn" onclick="go(CUR-1)" data-i18n="lesson.navBack">← Back</button>
+        <button id="nextBtn" class="primary" onclick="nextAction()" data-i18n="lesson.navNext">Next →</button>
+        <span class="count" id="slideCount"></span>
+      </div>
+    </div>
+
+    <!-- PRINT / PDF view -->
+    <div id="pdfView" style="display:none;">
+      <div class="out-actions" style="display:flex;">
+        <button class="primary" onclick="window.print()" data-i18n="lesson.printSavePdf">Print / Save PDF</button>
+        <button onclick="toggleKey()" data-i18n="lesson.toggleAnswers">Show / hide answers &amp; notes</button>
+        <a class="btn" href="/" data-i18n="lesson.backToLibrary">↺ Back to library</a>
+      </div>
+      <div class="stage"><div class="sheet" id="sheet"></div></div>
+    </div>
+
+    <!-- PRACTICE SPEAKING views: two separate menu steps, each its own
+       clean, single-purpose screen (no in-screen toggle — switching means
+       going back to the sidebar) —
+       (1) solo drill: one word / sentence / question at a time, with listen
+           + local-only record-and-playback (never uploaded)
+       (2) Talk with AI: a short spoken-style back-and-forth about the
+           lesson, transcribed via the browser's speech recognition (or
+           typed as a fallback) and answered by /api/speak-chat.
+       (A third mode, Speaking Homework, used to live here — answer the
+       lesson's own "Let's Talk" questions out loud one at a time for an AI
+       score. That flow now lives directly on the Let's Talk / Let's
+       Practise step itself (see talkQuestionHtml()), so students aren't
+       asked the same questions twice in two different places.) -->
+  <div id="practiceView" style="display:none;">
+    <div class="practice-wrap">
+      <div id="pSoloWrap">
+        <div class="practice-kicker" id="pKicker"></div>
+        <div class="practice-count" id="pCount"></div>
+        <div class="practice-emoji" id="pEmoji" style="display:none;" aria-hidden="true"></div>
+        <div class="practice-text" id="pText"></div>
+        <div class="practice-sub" id="pSub"></div>
+        <div class="practice-ko" id="pKo" style="display:none;"></div>
+        <div class="practice-controls">
+          <button class="practice-btn" id="pListenBtn" onclick="practiceListen()" data-i18n="practice.listen">▶ Listen</button>
+          <button class="practice-btn" id="pPrevBtn" onclick="practiceGo(P_IDX-1)" data-i18n="practice.prev">← Back</button>
+          <button class="practice-btn primary" id="pNextBtn" onclick="practiceGo(P_IDX+1)" data-i18n="practice.next">Next →</button>
+        </div>
+        <div class="practice-done" id="pDone" style="display:none;">
+          <h2 data-i18n="practice.doneTitle">🎉 Great practice!</h2>
+          <p data-i18n="practice.doneBody">You practiced speaking for this whole lesson. Come back tomorrow to keep your streak going!</p>
+          <button class="practice-cta-btn" onclick="showMode('practice','chat')" data-i18n="practice.chatCtaBtn">Start talking →</button>
+        </div>
+      </div>
+
+      <div id="pChatWrap" style="display:none;">
+        <div class="chat-submode-row">
+          <button class="chat-submode-btn on" id="chatSubmodeBtnChat" onclick="chatShowSubmode('chat')">💬 Chat with AI</button>
+          <button class="chat-submode-btn" id="chatSubmodeBtnLive" onclick="chatShowSubmode('live')" style="display:none;">🎤 Live Voice (Beta)</button>
+        </div>
+
+        <div id="chatPanel">
+          <div class="chat-kicker" data-i18n="practice.chatKicker">Talk about this lesson with an AI partner</div>
+          <div class="chat-log" id="chatLog"></div>
+          <div class="chat-typing" id="chatTyping" style="display:none;" data-i18n="practice.chatTyping">AI is typing…</div>
+          <div class="chat-error" id="chatError" style="display:none;"></div>
+          <div class="chat-input-row">
+            <button class="chat-mic-btn" id="chatMicBtn" onclick="chatToggleMic()" data-i18n="practice.chatMic">🎙 Talk</button>
+            <input class="chat-text-input" id="chatTextInput" type="text" data-i18n-placeholder="practice.chatPlaceholder" placeholder="Type here…" onkeydown="if(event.key==='Enter') chatSendTyped();">
+            <button class="chat-send-btn" id="chatSendBtn" onclick="chatSendTyped()" data-i18n="practice.chatSend">Send</button>
+          </div>
+          <div class="chat-mic-note" id="chatMicNote" style="display:none;" data-i18n="practice.chatMicNote">Voice input isn't supported in this browser — you can still type your answer.</div>
+          <label class="chat-mute-row"><input type="checkbox" id="chatMuteBox" onchange="chatOnMuteChange()"> <span data-i18n="practice.chatMute">🔇 Don't read AI replies aloud</span></label>
+          <div class="practice-privacy" data-i18n="practice.chatPrivacyNote">Nothing you say here is recorded — only that you practiced today.</div>
+        </div>
+
+        <!-- Live Voice (Beta) — Tier 2 test, gated server-side to a small
+             allowlist (api/speak-chat.js mode:'live-token'). The tab button
+             above starts hidden (style="display:none") and is only revealed
+             for eligible students by the eligibility check further down this
+             file (search liveVoiceBeta) — so this panel only ever becomes
+             reachable for someone who was already going to pass the server
+             check too. The server check stays as the real security boundary
+             either way (defense in depth). -->
+        <div id="livePanel" style="display:none;">
+          <div class="chat-kicker">Live spoken conversation — beta test, limited access</div>
+          <div class="chat-log" id="liveLog"></div>
+          <div class="live-status" id="liveStatus">Not connected</div>
+          <div class="chat-error" id="liveError" style="display:none;"></div>
+          <div class="scoring-indicator" id="liveReviewScoring" style="display:none;" data-i18n="practice.hwScoring">Scoring…</div>
+          <div class="hw-result" id="liveReviewResult" style="display:none;">
+            <div class="hw-score" id="liveReviewScoreText"></div>
+            <div class="hw-feedback" id="liveReviewFeedbackText"></div>
+          </div>
+          <div class="chat-input-row">
+            <button class="chat-mic-btn" id="liveStartBtn" onclick="liveStart()">🎤 Connect</button>
+            <button class="chat-mic-btn" id="liveStopBtn" style="display:none;" onclick="liveStop()">⏹ Disconnect</button>
+          </div>
+          <div class="practice-privacy">Beta test only — this uses Google's Gemini Live API directly, not this site's usual AI provider.</div>
+        </div>
+
+        <div class="chat-next-lesson-row">
+          <a class="practice-cta-btn" id="chatNextLessonBtn" href="/path">Next lesson →</a>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+<script src="practice.js"></script>
+<script src="lessons.js"></script>
+<script src="render.js"></script>
+<script src="games.js"></script>
+<script src="token.js"></script>
+<script>
+  // Paywall gate: the first lesson at each level is free; the rest
+  // need a membership. This runs FIRST and the main render script below
+  // must await window.__dlGate before showing anything, so there's no
+  // race and no way for a network/import hiccup to silently let a
+  // premium lesson through (fail CLOSED, not open).
+  //
+  // The subscription check goes through OUR OWN /api/access endpoint
+  // (via token.js) instead of loading the Supabase client library from
+  // its CDN — same-origin only, so it can't be slowed down or blocked by
+  // a flaky external library CDN.
+  //
+  // #gateLoading is shown by default (in the static HTML) so there's
+  // never a blank white screen while this resolves. When access is
+  // denied, it's removed immediately (see the `else` branch below —
+  // the paywall card replaces it right there, synchronously). When
+  // access is granted, it stays up longer — see revealPresentWrap(),
+  // called later once real slide content is actually ready, not the
+  // instant this verdict is known. #presentView itself is left
+  // completely untouched throughout, so the main render script below
+  // always finds its #slide element.
+  async function dlDetermineAccess(){
+    // Cold visitors (ads, social shares) need to hit real, usable content
+    // immediately with zero friction, or they bounce. The two easiest
+    // levels are fully open — no login, no trial — so anyone can browse
+    // and use them right away. The paywall (1 free sample + trial/sub)
+    // only kicks in from Elementary upward, where the audience is more
+    // committed and asking for signup makes sense.
+    const FULLY_FREE_LEVELS = ["phonics","beginner"];
+    const FREE_PER_LEVEL = 1; // one sample lesson free at every gated level
+    // LEVEL_ORDER here is the global one from lessons.js (LEVELS.map(l=>l.key)) —
+    // no local redeclaration, so this can never drift from the canonical order.
+    try {
+      const id = new URLSearchParams(location.search).get('id');
+      let list = [];
+      // cached in this tab for the session — most lesson opens after the
+      // first one skip the network round trip entirely
+      try {
+        const cached = sessionStorage.getItem('dl_lessons_meta');
+        if (cached) list = JSON.parse(cached);
+      } catch(e){}
+      // include the caller's own token (if logged in) so a private "Create
+      // Your Own" lesson they created shows up in THEIR OWN meta list (via
+      // RLS — see api/lessons.js/supabase/schema.sql) — otherwise a private
+      // lesson would never be findable here at all, even by its own creator.
+      const metaAuthToken = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+      const metaFetchOpts = metaAuthToken ? { headers: { Authorization: 'Bearer '+metaAuthToken } } : undefined;
+      if (!list.length) {
+        try {
+          const r = await fetch('/api/lessons?meta=1', metaFetchOpts);
+          if (r.ok) { list = await r.json(); if(!metaAuthToken) sessionStorage.setItem('dl_lessons_meta', JSON.stringify(list)); }
+        } catch(e){}
+      }
+      if (!list.length && window.LESSONS) list = window.LESSONS;
+      let thisLesson = list.find(x=>x.id===id);
+      if (!thisLesson) {
+        // not in the (possibly stale, up-to-5-minutes-old) cached list —
+        // e.g. a lesson just created via Create Your Own moments ago.
+        // Force one fresh, uncached fetch before concluding it's locked.
+        try {
+          const r = await fetch('/api/lessons?meta=1', metaFetchOpts);
+          if (r.ok) { list = await r.json(); if(!metaAuthToken) sessionStorage.setItem('dl_lessons_meta', JSON.stringify(list)); thisLesson = list.find(x=>x.id===id); }
+        } catch(e){}
+      }
+      list = dlOrderedLessons(list);
+      if (thisLesson && thisLesson.custom === 'true') return { ok:true, loggedIn:false };  // your own Create Your Own lesson — always viewable
+      if (thisLesson && FULLY_FREE_LEVELS.includes(thisLesson.level)) return { ok:true, loggedIn:false };  // whole level is open
+      // Bible-topic lessons are a deliberate, permanent free section —
+      // free regardless of subscription/trial status, at every level.
+      if (thisLesson && String(thisLesson.topic||'').toLowerCase() === 'bible') return { ok:true, loggedIn:false };
+
+      const freeIds = new Set();
+      LEVEL_ORDER.filter(lv=>!FULLY_FREE_LEVELS.includes(lv)).forEach(lv => {
+        // Bible lessons don't consume a level's one free-sample slot —
+        // they're free on their own, so the sample should go to a
+        // non-Bible lesson instead.
+        list.filter(x=>x.level===lv && String(x.topic||'').toLowerCase()!=='bible').slice(0, FREE_PER_LEVEL).forEach(x=>freeIds.add(x.id));
+      });
+      if (freeIds.has(id)) return { ok:true, loggedIn:false };   // free sample lesson for this level
+
+      let acc = { loggedIn:false, subscribed:false };
+      try {
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('access check timed out')), 4000));
+        acc = await Promise.race([dlCheckAccess(), timeout]);
+      } catch (e) { console.error('Access check failed:', e); }
+      if (acc.subscribed) return { ok:true, loggedIn:true };     // member (or currently trialing)
+      return { ok:false, loggedIn: !!acc.loggedIn };
+    } catch (e) {
+      console.error('Paywall gate error:', e);
+    }
+    return { ok:false, loggedIn:false };                        // locked, fail closed
+  }
+
+  // Swaps #gateLoading's "Loading…" text out for the real #presentWrap
+  // (nav/TASKS header/slide-nav) — called once real content is actually
+  // ready to paint into it, NOT the instant the paywall gate resolves
+  // (see the allowed branch below, and revealPresentWrap()'s two call
+  // sites further down): the gap between "access granted" and "slide 0
+  // is actually built" can span several more awaited fetches
+  // (lesson JSON, dlHydrateGate, loadImage), during which #presentWrap
+  // used to already be visible but completely empty — an empty "TASKS"
+  // header and bare Back/Next buttons with no slide content, reported as
+  // a confusing blank-screen flash. Keeping "Loading…" up for that whole
+  // stretch instead avoids ever showing that half-built state.
+  function revealPresentWrap(){
+    const gl = document.getElementById('gateLoading'); if (gl) gl.remove();
+    const wrap = document.getElementById('presentWrap');
+    wrap.style.display = '';
+    return wrap;
+  }
+
+  window.__dlGate = (async function(){
+    const gate = await dlDetermineAccess();
+    const allowed = gate.ok;
+    if (allowed) {
+      // don't reveal #presentWrap yet — see revealPresentWrap()'s doc
+      // comment; the phase-B loading IIFE below calls it once slide 0 is
+      // actually ready (or immediately, on its "lesson not found" path)
+    } else {
+      const gl = document.getElementById('gateLoading'); if (gl) gl.remove();
+      const wrap = document.getElementById('presentWrap');
+      const mt=document.getElementById('modeToggle'); if(mt) mt.style.display='none';
+      // nothing has loaded yet — hide the sidebar rather than show an
+      // empty task list, and show the paywall/trial card in the main
+      // stage only (the sidebar itself has nothing to navigate to yet)
+      const sb=document.getElementById('stepsSidebar'); if(sb) sb.style.display='none';
+      wrap.style.display='flex';
+      const ms=document.getElementById('mainStage');
+      ms.innerHTML = gate.loggedIn
+        ? `<div class="paywall"><div class="paywall-card">
+            <div class="pw-emoji">🔒</div>
+            <h2 data-i18n="paywall.title">${dlT('paywall.title')}</h2>
+            <p data-i18n="paywall.body">${dlT('paywall.body')}</p>
+            <a class="pw-btn" href="/subscribe" data-i18n="paywall.unlock">${dlT('paywall.unlock')}</a>
+          </div></div>`
+        : `<div class="paywall"><div class="paywall-card">
+            <div class="pw-emoji">🔓</div>
+            <h2 data-i18n="paywall.trialTitle">${dlT('paywall.trialTitle')}</h2>
+            <p data-i18n="paywall.trialBody">${dlT('paywall.trialBody')}</p>
+            <a class="pw-btn" href="/login?mode=signup&next=${encodeURIComponent(location.pathname + location.search)}" data-i18n="paywall.startTrial">${dlT('paywall.startTrial')}</a>
+          </div></div>`;
+    }
+    return allowed;
+  })();
+
+  // Live Voice (Beta) tab: independent of the paywall gate above, since
+  // several gate paths (free levels, Bible topic, free-sample lessons)
+  // return early without ever calling dlCheckAccess() — but Live Voice
+  // eligibility always needs the real profile lookup regardless of how this
+  // lesson itself is unlocked. The button starts hidden in the static HTML;
+  // this only ever reveals it, never hides something already shown, so a
+  // slow network can't cause a flash of the tab for an ineligible student.
+  (async function(){
+    try {
+      const acc = await dlCheckAccess();
+      const btn = document.getElementById('chatSubmodeBtnLive');
+      if (btn && acc.liveVoiceBeta) btn.style.display = '';
+      // Owner-only QA bypass (see lessons.js's dlGateActive()/dlIsOwnerEmail):
+      // reuses this same independent dlCheckAccess() call rather than adding
+      // a new network round trip. This can resolve after the main go(0)
+      // call below has already run with the gate still active, so re-run
+      // the same unlock once the flag is known.
+      if (typeof dlIsOwnerEmail === 'function' && dlIsOwnerEmail(acc.email) && localStorage.getItem('dl_owner_preview')==='1') {
+        window.DL_OWNER_PREVIEW = true;
+        if (typeof LESSON !== 'undefined' && LESSON && typeof go === 'function' && typeof furthestUnlockedIndex === 'function') go(furthestUnlockedIndex());
+      }
+    } catch (e) {}
+  })();
+</script>
+<script>
+let LESSON=null, SLIDES=[], CUR=0, WS=null, KOON=false, NEXT_LESSON_ID=null;
+
+/* Real per-lesson progress — replaces the old markLessonDone(), which
+   marked a lesson DONE (green, on the Path) the instant it was opened,
+   before the student had read/answered/played/talked anything at all — a
+   teacher rightly flagged this as meaningless ("I can just click on any
+   lesson and it says done"). Now there are three states: not started (no
+   local/server record at all), in progress (opened, or some but not
+   enough of the four real signals below), and done (server-computed —
+   see api/save-profile.js's body.progress handler for the exact rule).
+   'read'/'comprehension'/'game'/'talk' are the four signals that count
+   toward "done"; any other step name (just 'opened', used once when the
+   lesson loads) still creates/touches the record so the Path shows
+   "in progress" rather than "not started", without itself counting as
+   real progress.
+   Mirrors to localStorage (so a guest/offline student still sees
+   in-progress vs done) AND, when logged in, POSTs to the server (the
+   source of truth a teacher's dashboard reads) — best-effort, never
+   blocks the lesson from loading. */
+const PROGRESS_STEPS = ['read','comprehension','game','talk'];
+function dlProgressKey(){ return 'dl_progress_' + (localStorage.getItem('dl_uid')||'guest'); }
+function dlProgressAll(){
+  try{ return JSON.parse(localStorage.getItem(dlProgressKey())||'{}'); }catch(e){ return {}; }
+}
+function dlProgressCompute(steps){
+  // allPassed (locked-path students only — see dlGateAttempt()) is a
+  // strict superset of the heuristic below: every gated item passed always
+  // counts as done, mirroring api/save-profile.js's server-side check.
+  if(steps.allPassed) return 'done';
+  const doneCount = PROGRESS_STEPS.filter(k=>steps[k]).length;
+  const anchored = !!(steps.comprehension || steps.talk);
+  return (doneCount>=3 && anchored) ? 'done' : 'in_progress';
+}
+function dlProgressTouch(id, step){
+  try{
+    const all = dlProgressAll();
+    const entry = all[id] || { steps:{} };
+    entry.steps = Object.assign({}, entry.steps, { [step]: true });
+    entry.state = dlProgressCompute(entry.steps);
+    all[id] = entry;
+    localStorage.setItem(dlProgressKey(), JSON.stringify(all));
+  }catch(e){}
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(token){
+      fetch('/api/save-profile', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+        body: JSON.stringify({ progress: { lessonId:id, step } })
+      }).catch(()=>{});
+    }
+  }catch(e){}
+}
+// Saves the lesson's final Results-slide score (see lessonRepaintResults())
+// to the account, server-side only — no localStorage mirror needed since
+// this is read back by the teacher-facing side, not by the student's own
+// browser. Stored under steps.finalScore in the same lesson_progress row
+// dlProgressTouch() already writes to (see api/save-profile.js).
+function dlSaveLessonScore(id, score){
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    fetch('/api/save-profile', {
+      method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ progress: { lessonId:id, score } })
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+/* ============================================================
+   LOCKED PATH GATE — a student (dl_role==='student') can't advance past a
+   gated slide (SLIDES[i].gateKey set) until it's passed. Teachers/guests
+   are completely unaffected (dlIsStudent() short-circuits everything to
+   "always passed"/"never locked"). See public/lesson.html's SLIDES-
+   building code below for which slides get a gateKey, and
+   api/save-profile.js's question_attempts endpoints for the server side.
+   dlIsStudent() itself lives in lessons.js (shared with path.html).
+   ============================================================ */
+
+/* Strips the locked-path learner view down to "just your next activity" —
+   no Library/Path/Practice/Games/Create-your-own escape hatches, no
+   Present-in-class/Print & PDF/Practice-Speaking mode tabs (there's only
+   one mode now: the current step). Teachers/guests are completely
+   unaffected — same full nav and mode tabs as always. */
+function dlApplyStudentChrome(){
+  if(!dlIsStudent()) return;
+  const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
+  const create = document.getElementById('createOwnLink'); if(create) create.style.display='none';
+  const pathLink = document.getElementById('studentPathLink'); if(pathLink) pathLink.style.display='inline-block';
+  ['tabPresent','tabPdf','tabPractice'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.style.display='none';
+  });
+}
+// Runs immediately (dlIsStudent() only reads localStorage — no need to
+// wait on the paywall gate or the lesson fetch below) so the full nav
+// never flashes on screen for students while those async calls resolve.
+dlApplyStudentChrome();
+let GATE = { passed:{}, attempts:{} };   // keyed by `${stepType}:${itemIndex}`
+
+async function dlHydrateGate(lessonId){
+  if(!dlIsStudent()) return;
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    const r = await fetch('/api/save-profile?questionAttempts='+encodeURIComponent(lessonId), {
+      headers:{ Authorization:'Bearer '+token }
+    });
+    if(!r.ok) return;
+    const j = await r.json();
+    (j.attempts||[]).forEach(row=>{
+      const key = row.step_type+':'+row.item_index;
+      GATE.attempts[key] = row.attempts||0;
+      if(row.passed || row.needed_help) GATE.passed[key] = true;
+    });
+  }catch(e){}
+}
+
+function slidePassed(i){
+  if(!dlGateActive()) return true;
+  const s = SLIDES[i];
+  if(!s || !s.gateKey) return true;   // informational/combined slides: always open
+  return !!GATE.passed[s.gateKey];
+}
+function furthestUnlockedIndex(){
+  // the highest slide index currently reachable: the first not-yet-passed
+  // slide itself (so a student CAN be on it and attempt it) but nothing
+  // past it — once it's passed, this naturally advances to the next one.
+  for(let i=0;i<SLIDES.length;i++) if(!slidePassed(i)) return i;
+  return SLIDES.length-1;
+}
+
+/* dlGateAttempt does a server round trip per call (read attempts, +1,
+   write back — see api/save-profile.js's questionAttempt handler), which
+   isn't atomic: two calls in flight at once can both read the same
+   "before" count and each write back 1, so the counter never advances.
+   Rare for a deliberate one-question-at-a-time submit, but some gated
+   steps can fire several attempts within milliseconds of each other —
+   easily overlapping. Chain every call through one promise so each
+   attempt's round trip finishes, and GATE.attempts reflects it, before
+   the next one starts. */
+let _gateChain = Promise.resolve();
+function dlGateAttempt(stepType, itemIndex, passed, score){
+  const run = _gateChain.then(()=>dlGateAttemptRun(stepType, itemIndex, passed, score));
+  _gateChain = run.catch(()=>{});
+  return run;
+}
+
+/* Records one attempt at a gated item. attempts is authoritative from the
+   SERVER (not the client's own count) so it can't drift across reloads/
+   tabs; on the 3rd failed/sub-threshold attempt the server flags
+   needed_help — the client's cue to reveal the answer and let the student
+   move on anyway rather than get permanently stuck. Best-effort: a failed
+   POST just means this attempt isn't counted server-side, same
+   fire-and-forget tolerance as dlProgressTouch above. */
+async function dlGateAttemptRun(stepType, itemIndex, passed, score){
+  // teachers/guests (and the owner in preview mode) aren't gated at all —
+  // skip the server round-trip and the reveal-after-3 mechanic entirely,
+  // so their experience is unchanged.
+  if(!dlGateActive()) return { passed:true, neededHelp:false, attempts:0 };
+  const key = stepType+':'+itemIndex;
+  let attempts = (GATE.attempts[key]||0) + 1;
+  let neededHelp = !passed && attempts >= 3;
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(token && LESSON){
+      const r = await fetch('/api/save-profile', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+        body: JSON.stringify({ questionAttempt: { lessonId: LESSON.id, stepType, itemIndex, passed, score } })
+      });
+      if(r.ok){ const j = await r.json(); attempts = j.attempts||attempts; neededHelp = !!j.neededHelp; passed = passed || !!j.passed; }
+    }
+  }catch(e){}
+  GATE.attempts[key] = attempts;
+  if(passed || neededHelp) GATE.passed[key] = true;
+  const nb = document.getElementById('nextBtn');
+  if(nb) nb.disabled = dlGateActive() && !slidePassed(CUR);
+  // every gated item in this lesson has now been passed — flip the real
+  // per-lesson progress record to "done" (see api/save-profile.js's
+  // body.progress handler, steps.allPassed) rather than relying on the
+  // older, coarser 3-of-4-signals heuristic for locked-path students.
+  if(LESSON && SLIDES.every((s,idx)=>slidePassed(idx))) dlProgressTouch(LESSON.id, 'allPassed');
+  return { passed: !!GATE.passed[key], neededHelp, attempts };
+}
+
+/* games.js's submitScore() calls this on every completed mini-game round.
+   The Games step is just Memory now (see GAMES_REQUIRED) — Scramble and
+   Match-Up were removed from this step (the lesson already has its own
+   standalone Word Scramble step elsewhere). Unlimited replays after
+   Memory's done, no reveal fallback needed since there's nothing to get
+   stuck on. */
+window.dlOnGameActivityComplete = function(lessonId, activity, score, max){
+  if(!LESSON || lessonId !== LESSON.id) return;
+  // only counts while the Games step is actually the active slide — the
+  // standalone Word Scramble lesson step (scramCheck()) also calls
+  // DLGames.submit(..., 'scramble', ...) with the same activity label, and
+  // that must NOT satisfy the Games step's own Scramble requirement.
+  if(!(SLIDES[CUR] && SLIDES[CUR].game)) return;
+  if(GAMES_REQUIRED.indexOf(activity) >= 0) GAMES_DONE[activity] = true;
+  if(typeof window.dlGamesRefreshSequence === 'function') window.dlGamesRefreshSequence();
+  if(GAMES_REQUIRED.every(g=>GAMES_DONE[g])) dlGateAttempt('games', 0, true);
+};
+
+/* work out the lesson that follows this one in the Path, so the speaking
+   step at the end of a lesson can send the student straight on to the next
+   lesson instead of back to the library. Uses the same ordering as the
+   Path page (level order, then seq, then title) over the meta list the
+   paywall gate already cached in sessionStorage. Returns null if unknown
+   (e.g. this is the last lesson) — the caller then falls back to Library. */
+function computeNextLessonId(id){
+  let list = [];
+  try{ list = JSON.parse(sessionStorage.getItem('dl_lessons_meta')||'[]'); }catch(e){}
+  if((!list || !list.length) && window.LESSONS) list = window.LESSONS;
+  if(!list || !list.length) return null;
+  list = dlOrderedLessons(list);
+  const idx = list.findIndex(x=>x.id===id);
+  return (idx>=0 && idx < list.length-1) ? list[idx+1].id : null;
+}
+
+(async function(){
+  const allowed = await window.__dlGate;
+  if (!allowed) return;   // paywall already shown by the gate above
+
+  const id = new URLSearchParams(location.search).get('id');
+
+  // prefer the database (it carries translations); fall back to the static file
+  let base=null, translations={};
+  try{
+    const r = await fetch('/api/lessons?id='+encodeURIComponent(id));
+    if(r.ok){ const j = await r.json(); base = j.lesson; translations = j.translations||{}; }
+  }catch(e){}
+  if(!base) base = LESSONS.find(L=>L.id===id);
+  if(!base){
+    revealPresentWrap();
+    const sb=document.getElementById('stepsSidebar'); if(sb) sb.style.display='none';
+    document.getElementById('presentView').innerHTML =
+      '<div class="stage"><div class="sheet"><div class="empty"><h2>Lesson not found</h2><p>That lesson may have moved. <a href="/" style="color:var(--accent);font-weight:700;">Return to the library</a>.</p></div></div></div>';
+    return;
+  }
+  LESSON = withLevelMeta(base);
+  LESSON.translations = translations;
+  dlProgressTouch(LESSON.id, 'opened');   // opening a lesson marks it "in progress" on the Path (not done — see dlProgressTouch)
+  NEXT_LESSON_ID = computeNextLessonId(LESSON.id);   // where "Next lesson" goes after speaking practice
+  document.title = LESSON.title + ' — Teacher Lawrence';
+  document.getElementById('modeToggle').style.display='flex';
+  if(LESSON.translations && LESSON.translations.ko) document.getElementById('tabKo').style.display='inline-block';
+  if(localStorage.getItem('dl_role')==='teacher') document.getElementById('tabAssign').style.display='inline-block';
+  dlApplyStudentChrome();
+
+  // Any lesson (curated or Create Your Own) that has no Korean translation
+  // yet gets one generated in the background while the user reads, so
+  // it's ready a few seconds later with no extra wait up front. Harmless
+  // to fire more than once (server-side is idempotent once a translation
+  // exists) and cheap to skip if one's already there.
+  if(LESSON.type !== 'flashcards' && !(LESSON.translations && LESSON.translations.ko)){
+    fetch('/api/translate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ id: LESSON.id, lang: 'ko' })
+    }).then(r=>r.json()).then(j=>{
+      if(j && j.ok && j.data){
+        LESSON.translations = LESSON.translations || {};
+        LESSON.translations.ko = j.data;
+        const tk = document.getElementById('tabKo');
+        if(tk) tk.style.display = 'inline-block';
+      }
+    }).catch(()=>{});
+  }
+
+  await dlHydrateGate(LESSON.id);          // populate GATE before the first go(0) below
+  await loadImage(LESSON);                 // adds a photo if Unsplash key is set (else skips)
+  if(LESSON.type==='flashcards'){
+    renderFlashcardLesson(LESSON, 'sheet');
+    SLIDES = buildFlashcardSlides(LESSON);
+  } else {
+    renderLesson(LESSON, 'sheet');         // printable sheet (PDF view)
+    WS = makeWordSearch(LESSON.vocab.map(v=>v.w));
+    SLIDES = buildSlides(LESSON);
+  }
+  // Every lesson opens at slide 0 (Vocabulary), for everyone — locked-path
+  // students no longer auto-skip ahead to their furthest-unlocked slide.
+  // Already-passed gated slides stay freely re-visitable (slidePassed()
+  // still returns true for them), so this just costs a few extra taps of
+  // Next to get back to where they left off, in exchange for never
+  // surprising a student by opening mid-lesson on a slide they don't
+  // remember getting to.
+  revealPresentWrap();
+  go(0);
+
+  // Arriving via the "🎙 Practice" nav link or the Path speaking card
+  // (lesson?id=…&mode=practice[&sub=chat]) drops the student straight into
+  // Practice Speaking for this lesson — one tap to start speaking from
+  // anywhere. `sub` is optional and defaults to the solo drill (unchanged
+  // behavior for existing links that don't pass it). `step=talk` jumps
+  // straight to the Let's Talk / Let's Practise step instead, where
+  // recording now lives (a `sub=homework` link from before that step
+  // absorbed Speaking Homework is honored the same way).
+  const urlParams = new URLSearchParams(location.search);
+  const sub = urlParams.get('sub');
+  if(urlParams.get('mode') === 'practice' && sub !== 'homework'){
+    showMode('practice', sub || 'solo');
+  } else if(urlParams.get('step') === 'talk' || sub === 'homework'){
+    const talkIdx = SLIDES.findIndex(s=>s.letsTalk);
+    if(talkIdx >= 0) stepClick(talkIdx);
+    else showMode('practice', 'solo');
+  }
+
+  const prevLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => {
+    const b = document.getElementById('tabKo');
+    if (b) { b.textContent = dlT(KOON ? 'lesson.translationHide' : 'lesson.translationShow'); }
+    SLIDES = (LESSON.type==='flashcards') ? buildFlashcardSlides(LESSON) : buildSlides(LESSON);
+    go(CUR);
+    if (prevLangHook) prevLangHook(lang);
+  };
+})();
+
+/* fetch one relevant photo (free Unsplash); fails soft with no key.
+   Skips the network call entirely if the lesson already has a stored
+   image (saved back to the database below), so the library/Path card
+   grids can show the same photo without ever hitting Unsplash. */
+async function loadImage(L){
+  if(L.image) return;  // already stored on the lesson itself
+  try{
+    const cacheKey='img:'+L.id;
+    let data = sessionStorage.getItem(cacheKey);
+    if(data){ data=JSON.parse(data); }
+    else {
+      const q = encodeURIComponent(L.imageQuery || L.title);
+      const r = await fetch('/api/image?query='+q);
+      data = await r.json();
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+    }
+    if(data && data.url){
+      L.image=data.url; L.imageAlt=data.alt; L.imageCredit=data.credit;
+      // best-effort: persist so this photo is reused everywhere from now on
+      fetch('/api/image', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ id:L.id, url:data.url, alt:data.alt, credit:data.credit })
+      }).catch(()=>{});
+    }
+  }catch(e){ /* no image — lesson still works */ }
+}
+
+/* ---------- teacher notes (teachers) vs lesson goals (students) ---------- */
+function startCard(teacherHtml, studentHtml){
+  const isStudent = localStorage.getItem('dl_role') === 'student';
+  return isStudent
+    ? `<div class="teacher-card"><h3>🎯 ${dlT('lesson.goalsTitle')}</h3>${studentHtml}</div>`
+    : `<div class="teacher-card"><h3>👩‍🏫 ${dlT('lesson.teacherNotesTitle')}</h3>${teacherHtml}</div>`;
+}
+
+/* ---------- build the big projector slides ---------- */
+function buildSlides(L){
+  const slides = [];
+
+  // 0 — start screen
+  const heroVisual = L.image
+    ? `<img class="hero-photo" src="${escAttr(L.image)}" alt="${escAttr(L.imageAlt||L.title)}">`
+    : `<div class="big-icon">${L.icon||'📖'}</div>`;
+  slides.push({ label:dlT('lesson.stepStart'), body:
+    `<div class="start-screen">
+       ${heroVisual}
+       <div class="slide-kicker">${esc(L.kicker)}</div>
+       <h2>${esc(L.title)}</h2>
+       <p class="slide-hint">${esc(L.levelTag)} · ${esc(L.summary||'')}</p>
+       <p class="slide-hint">${dlT('lesson.pressStart')}</p>
+       ${startCard(
+         `<p><b>Warm-up:</b> Ask what students already know about the topic. Pre-teach 2–3 vocabulary words.</p>
+          <p><b>Reading:</b> Read together, then have students read in pairs.</p>
+          <p><b>Flow:</b> Vocabulary → Article → Comprehension → Word Search / Scramble → Let's Talk.</p>
+          ${L.note?`<p style="color:var(--muted)">${esc(L.note)}</p>`:''}`,
+         `<p>${dlT('lesson.goalsFlow')}</p>
+          <p>${dlT('lesson.goalsHint')}</p>`
+       )}
+     </div>` });
+
+  // Korean translation (only when the KR switch is ON and a translation exists)
+  const T = (KOON && L.translations && L.translations.ko) ? L.translations.ko : null;
+  const koLine = (s) => s ? `<div class="ko-line">${esc(s)}</div>` : '';
+  // vocab translations used to be a flat array of definition strings; now each
+  // entry is {w,d} so the Korean word itself can be shown too. Stay defensive
+  // so lessons translated before this change (still flat strings) keep working.
+  const vocabKo = (i) => {
+    const entry = T && T.vocab && T.vocab[i];
+    if (!entry) return '';
+    if (typeof entry === 'string') return koLine(entry);
+    return (entry.w ? `<div class="ko-line ko-word">${esc(entry.w)}</div>` : '') + koLine(entry.d);
+  };
+
+  // 1 — vocabulary — one word per screen (tap ▶ to hear); informational,
+  // no gate, taught before the reading. (Was one slide with every word
+  // stacked in a list; split so the locked path shows one activity at a
+  // time, same reasoning as Comprehension/Let's Talk/Word Scramble below.)
+  L.vocab.forEach((v,i)=>{
+    slides.push({ label:dlT('lesson.stepVocabulary')+' '+(i+1)+'/'+L.vocab.length, kicker:dlT('lesson.stepPrefix')+' 1', title:dlT('lesson.titleKeyVocabulary'), hint:dlT('lesson.hintVocabulary'), body:
+      `<div class="vlist"><div class="vrow"><button class="word-play" data-speak="${escAttr(v.w+'. '+v.d+'.')}" onclick="speak(this)">▶</button>
+       <div class="vtext"><strong>${esc(v.w)}</strong> <i style="color:var(--muted)">${esc(v.p)}</i> — ${esc(v.d)}${vocabKo(i)}</div></div></div>` });
+  });
+
+  // 2 — games (memory match etc.) right after vocabulary, so students drill
+  // the new words while they're fresh, before reading them in context
+  slides.push(gamesSlide(dlT('lesson.stepPrefix')+' 2'));
+
+  // 3 — read the article (with sticky player bar + optional Korean lines).
+  // A continuous passage, not a list of discrete items like Read Together
+  // (buildFlashcardSlides below) — stays one slide with one player bar;
+  // splitting a passage sentence-by-sentence would hurt reading flow and
+  // there's nothing to individually "pass" here anyway (dwell-time already
+  // gates progress signal, not slide advancement).
+  const articleText = stripTags(L.paras.join(' '));
+  const articleHtml = (T && T.paras)
+    ? `<div class="big ko-article show-ko">${T.paras.map(par=>
+         `<p>${par.map(s=>`<span class="sen"><span class="en">${esc(s.en)}</span><span class="ko">${esc(s.ko)}</span></span>`).join(' ')}</p>`).join('')}</div>`
+    : `<div class="big">${L.paras.map(p=>`<p>${p}</p>`).join('')}</div>`;
+  slides.push({ label:dlT('lesson.stepReadArticle'), kicker:dlT('lesson.stepPrefix')+' 3', title:dlT('lesson.stepReadArticle'), hint:dlT('lesson.hintReadArticle'), articleRecorder:true, body:
+    `<div class="player">
+       <button class="play-btn" data-speak="${escAttr(articleText)}" onclick="speak(this)">▶</button>
+       <div class="player-track"><div class="player-fill" id="speakFill"></div></div>
+       <div class="player-time" id="speakTime"></div>
+     </div>
+     <div class="session-rec-row">
+       <div class="chat-mic-note" id="artMicNote" style="display:none;" data-i18n="practice.sessionMicNote">Whole-session AI feedback isn't supported in this browser — you can still listen and self-check as usual.</div>
+     </div>
+     <div class="scoring-indicator" id="artScoring" style="display:none;" data-i18n="practice.hwScoring">Scoring…</div>
+     <div class="hw-result" id="artResult" style="display:none;">
+       <div class="hw-score" id="artScoreText"></div>
+       <div class="hw-feedback" id="artFeedbackText"></div>
+     </div>
+     <div class="chat-error" id="artError" style="display:none;"></div>
+     ${articleHtml}` });
+
+  // 4 — comprehension: one question per screen. The student writes an
+  // actual answer in a text box; it's scored together with everything
+  // else on the Results slide at the end (see compScoreAnswer()).
+  // Ungated (no gateKey) — same reasoning as Games/Word Search: Next is
+  // available immediately rather than requiring a passing score first.
+  const compAnswers = L.compAnswers||[];
+  const compKo = T && T.comprehension;
+  L.comprehension.forEach((q,i)=>{
+    slides.push({ label:dlT('lesson.stepComprehension')+' '+(i+1)+'/'+L.comprehension.length, kicker:dlT('lesson.stepPrefix')+' 4', title:dlT('lesson.stepComprehension'), hint:dlT('lesson.hintComprehension'), comp:true, body:
+      compQuestionHtml(q, i, compAnswers[i], compKo && compKo[i]) });
+  });
+
+  // 5 — word search (drag to select; correct words lock in red) — a single
+  // grid puzzle, not a list of discrete items, so it stays one combined
+  // screen. Ungated (no gateKey) — same reasoning as the Games step:
+  // Next is available immediately rather than requiring every word to
+  // be found first, matching what the user asked for after the Games
+  // step's own "3 tries" gate proved unreliable and was removed.
+  slides.push({ label:dlT('lesson.stepWordSearch'), kicker:dlT('lesson.stepPrefix')+' 5', title:dlT('lesson.stepWordSearch'), hint:dlT('lesson.hintWordSearch'), ws:true, body:
+    `<div class="slide-table-wrap">
+       <table class="ws wsplay" id="wsTable">${
+         WS.grid.map((row,r)=>`<tr>${row.map((ch,c)=>`<td data-r="${r}" data-c="${c}">${ch}</td>`).join('')}</tr>`).join('')
+       }</table>
+       <div class="ws-words"><h3 style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;">Find these</h3>
+         <button class="ans-btn hint-btn" style="margin:0 0 10px;" onclick="wsHint()">💡 Hint</button>
+         <ul id="wsWords" style="list-style:none;font-family:Helvetica,Arial,sans-serif;">${
+           WS.words.map(w=>`<li data-word="${w}" style="padding:6px 0;font-size:17px;">${w}</li>`).join('')
+         }</ul>
+         <div id="wsDone" class="ws-done" style="display:none;">🎉 All words found!</div>
+       </div>
+     </div>` });
+
+  // 6 — word scramble: one row per screen, checked (and gated) individually
+  // via scramCheck(i) — was one "Check all" button for every row at once;
+  // a local exact-match check is plenty for a single known target word per
+  // row, so this doesn't need an AI call the way Comprehension does.
+  const scr = L.vocab.slice(0,6);
+  SCRAM_TOTAL = scr.length;
+  scr.forEach((v,i)=>{
+    slides.push({ label:dlT('lesson.stepWordScramble')+' '+(i+1)+'/'+scr.length, kicker:dlT('lesson.stepPrefix')+' 6', title:dlT('lesson.stepWordScramble'), hint:dlT('lesson.hintWordScramble'), scramInput:true, body: scramRowHtml(v, i) });
+  });
+
+  // 7 — let's talk: one question per screen (Listen + Record + AI
+  // score/feedback — merged in from the old standalone Speaking Homework
+  // step so students get instant feedback here instead of answering the
+  // same questions twice in two different places). Ungated (no gateKey)
+  // — same reasoning as the other steps above.
+  const talkKo = T && T.discussion;
+  L.discussion.forEach((q,i)=>{
+    slides.push({ label:dlT('lesson.stepLetsTalk')+' '+(i+1)+'/'+L.discussion.length, kicker:dlT('lesson.stepPrefix')+' 7', title:dlT('lesson.stepLetsTalk'), hint:dlT('lesson.hintLetsTalk'), letsTalk:true, body:
+      talkQuestionHtml(q, i, talkKo && talkKo[i]) });
+  });
+  // speaking practice, each its own clean single-purpose screen in the
+  // task list (see practiceCtaSlides() below)
+  slides.push(...practiceCtaSlides());
+
+  // Results slide — see lessonResultsSlide()'s own comment. Pushed
+  // unconditionally now (used to be conditional on having AI-graded
+  // questions to reveal; now it's also where the lesson score lives).
+  // Comes LAST, after speaking practice: it's the true final step, so
+  // Next from here goes straight to the next lesson (nextAction()
+  // already does this for whatever the last slide is — no special case
+  // needed) instead of funneling back into more practice prompts.
+  slides.push(lessonResultsSlide(dlT('lesson.stepPrefix')+' 9'));
+
+  return slides;
+}
+
+/* Comprehension: TWO possible shapes for a question, decided per-question
+   so old and new lessons both work with no migration —
+     - a plain string (older/legacy lessons): typed answer, scored on the
+       Results slide at the end — see compScoreAnswer() further down.
+     - an object {q, options, correct} (lessons generated after multiple-
+       choice was added, see api/make.js / api/generate.js): pick a button,
+       graded instantly client-side — see compChoosePick() further down.
+   Multiple choice needs no AI call at all, so it's instant; that's why new
+   lessons are generated this way — AI scoring stays for Let's Talk, where
+   open-ended production is the actual point.
+   `answer` is the model-answer reveal (typed flow) or a short explanation
+   shown once answered (multiple-choice flow) — same array (compAnswers),
+   different use depending on the question's own shape. */
+function compQuestionHtml(question, i, answer, ko){
+  const koLine = (s) => s ? `<div class="ko-line">${esc(s)}</div>` : '';
+  const isChoice = question && typeof question === 'object' && Array.isArray(question.options);
+  const qText = isChoice ? question.q : question;
+  // ko is a plain Korean string for legacy questions, or {q,options} for
+  // multiple-choice ones (see api/translate.js's compForTranslate()/
+  // compFromTranslated(), which keep this shape in sync with `question`).
+  const koQuestion = isChoice ? (ko && ko.q) : ko;
+  const koOptions = isChoice ? (ko && ko.options) : null;
+  if(isChoice){
+    return `<div class="bigq comp">
+       <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
+       <div class="comp-choices" id="compChoices${i}">${question.options.map((opt,oi)=>
+         `<button class="comp-choice" id="compChoice${i}_${oi}" onclick="compChoosePick(${i},${oi})">${esc(opt)}${(koOptions && koOptions[oi])?`<span class="comp-choice-ko">${esc(koOptions[oi])}</span>`:''}</button>`).join('')}</div>
+       ${answer?`<div class="comp-choice-explain" id="compExplain${i}" style="display:none;">${esc(answer)}</div>`:''}
+     </div>`;
+  }
+  // No Send button — typed answers are no longer scored per-question.
+  // The draft is saved as the student types (COMP_DRAFTS) and everything
+  // gets scored together on the Results slide at the end of the lesson —
+  // see compScoreAnswer() and lessonResultsSlide() further down. Prefills
+  // from any draft already saved, so Back/Next doesn't lose what was typed.
+  return `<div class="bigq comp">
+       <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
+       <div class="comp-write-row">
+         <textarea class="comp-input" id="compIn${i}" rows="2" data-i18n-placeholder="practice.hwTypePlaceholder" placeholder="${escAttr(dlT('practice.hwTypePlaceholder'))}" oninput="COMP_DRAFTS[${i}]=this.value">${esc(COMP_DRAFTS[i]||'')}</textarea>
+       </div>
+       ${answer?`<button class="ans-btn" onclick="revealAnswer(${i})" id="ansbtn${i}" data-i18n="lesson.showModelAnswer">${esc(dlT('lesson.showModelAnswer'))}</button>
+       <div class="answer" id="ans${i}">✓ ${esc(answer)}</div>`:''}
+     </div>`;
+}
+
+/* Let's Talk / Let's Practise: a single question gets its own Listen +
+   typed-answer, merged into the step that already lists these questions
+   instead of asking students to answer them twice in two different
+   places. No per-question scoring/gating anymore — the typed answer is
+   just saved as a draft (TALK_DRAFTS) and scored together with
+   everything else on the Results slide at the end — see
+   talkScoreAnswer()/lessonResultsSlide().
+   Recording lives only in the dedicated Practice Speaking modes, not here
+   (see practiceCtaSlides()).
+   TWO possible shapes per question, same convention as compQuestionHtml():
+     - a plain string (older lessons, or never run through the
+       now-retired upgrade-discussion.html batch tool): typed answer, as
+       above.
+     - {q, options, correct} (upgraded lessons — see api/make.js's
+       sanitizeChoiceQuestions()): pick a button, graded instantly
+       client-side, no AI call — see talkChoosePick(). */
+function talkQuestionHtml(question, i, ko){
+  const koLine = (s) => s ? `<div class="ko-line">${esc(s)}</div>` : '';
+  const isChoice = question && typeof question === 'object' && Array.isArray(question.options);
+  const qText = isChoice ? question.q : question;
+  const koQuestion = isChoice ? (ko && ko.q) : ko;
+  const koOptions = isChoice ? (ko && ko.options) : null;
+  if(isChoice){
+    return `<div class="bigq talk-list">
+       <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
+       <div class="talk-controls">
+         <button class="ans-btn" data-speak="${escAttr(qText)}" onclick="speak(this)" data-i18n="practice.listen">${esc(dlT('practice.listen'))}</button>
+       </div>
+       <div class="comp-choices" id="talkChoices${i}">${question.options.map((opt,oi)=>
+         `<button class="comp-choice" id="talkChoice${i}_${oi}" onclick="talkChoosePick(${i},${oi})">${esc(opt)}${(koOptions && koOptions[oi])?`<span class="comp-choice-ko">${esc(koOptions[oi])}</span>`:''}</button>`).join('')}</div>
+     </div>`;
+  }
+  // No Send button — same as Comprehension, typed answers are no longer
+  // scored per-question. Draft saved as the student types (TALK_DRAFTS),
+  // everything scored together on the Results slide — see
+  // talkScoreAnswer() and lessonResultsSlide() further down.
+  return `<div class="bigq talk-list">
+       <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
+       <div class="talk-controls">
+         <button class="ans-btn" data-speak="${escAttr(qText)}" onclick="speak(this)" data-i18n="practice.listen">${esc(dlT('practice.listen'))}</button>
+       </div>
+       <div class="talk-controls talk-type-row" id="talkTypeRow${i}">
+         <input class="chat-text-input" id="talkTypeInput${i}" type="text" value="${escAttr(TALK_DRAFTS[i]||'')}" data-i18n-placeholder="practice.hwTypePlaceholder" placeholder="${escAttr(dlT('practice.hwTypePlaceholder'))}" oninput="TALK_DRAFTS[${i}]=this.value">
+       </div>
+     </div>`;
+}
+/* Extracts display text regardless of question shape — used anywhere a
+   plain question string is needed (chat opener, AI conversation context,
+   printable sheet) but the full {q,options,correct} shape isn't. */
+function talkQText(q){ return (q && typeof q === 'object') ? (q.q||'') : (q||''); }
+
+/* The lesson's one and only Results slide — pushed once, always the last
+   content slide before practiceCtaSlides(). Replaces both the old
+   per-set "Let's Talk results" summary slide AND the sidebar's "Show my
+   lesson score" button (removed — see #stepsScoreRow in the nav markup):
+   now every lesson lands here once at the end instead of a score button
+   being clickable from every step throughout. Body is a single empty
+   container; lessonRepaintResults() (further down, called from go())
+   fills it in every time this slide is shown — first scoring any
+   COMP_DRAFTS/TALK_DRAFTS typed answers that haven't been sent yet (see
+   compScoreAnswer()/talkScoreAnswer()), then rendering the full
+   comprehension/scramble/talk score breakdown — see
+   lessonRepaintResults() further down. */
+function lessonResultsSlide(kicker){
+  return { label:dlT('lesson.talkResultsTitle'), kicker:kicker, title:dlT('lesson.talkResultsTitle'), hint:dlT('lesson.talkResultsHint'), lessonResults:true, body:
+    `<div id="lessonResultsBody"></div>` };
+}
+
+/* the two shared closing CTA slides, used as the last steps of every
+   lesson (regular and flashcard) — each a big button into a specific
+   Practice Speaking mode. (A third, Speaking Homework, used to live here
+   too — it's gone now that Let's Talk / Let's Practise score answers
+   inline, so there's no more separate "answer these same questions again"
+   step.) Kept together so both stay in sync. */
+function practiceCtaSlides(){
+  return [
+    { label:dlT('practice.modeSolo'), practice:true, subMode:'solo', body:
+      `<div class="practice-cta-slide">
+         <div class="practice-cta-mic">🎧</div>
+         <h2>${esc(dlT('practice.ctaNow'))}</h2>
+         <p class="practice-cta-sub">${esc(dlT('practice.ctaNowSub'))}</p>
+         <button class="practice-cta-btn" onclick="showMode('practice','solo')">${esc(dlT('path.speakBtn'))}</button>
+       </div>` },
+    { label:dlT('practice.modeChat'), practice:true, subMode:'chat', body:
+      `<div class="practice-cta-slide">
+         <div class="practice-cta-mic">💬</div>
+         <h2>${esc(dlT('practice.chatCtaTitle'))}</h2>
+         <p class="practice-cta-sub">${esc(dlT('practice.chatCtaSub'))}</p>
+         <button class="practice-cta-btn" onclick="showMode('practice','chat')">${esc(dlT('practice.chatCtaBtn'))}</button>
+       </div>` }
+  ];
+}
+
+/* the shared "🎮 Games" step — Memory, built from this lesson's own words,
+   played inline (Scramble and Match-Up used to also live here as a tabbed
+   sequence — removed; the lesson already has its own standalone Word
+   Scramble step elsewhere and Match-Up wasn't earning its slot). Reading
+   lessons place it right after Vocabulary (drill the new words while
+   they're fresh); flashcard lessons keep it near the end, right before
+   speaking practice. initGamesSlide() wires it up after the slide renders. */
+function gamesSlide(kicker){
+  return { label:dlT('lesson.stepGames'), kicker:kicker, title:dlT('lesson.titleGames'), hint:dlT('lesson.hintGames'), game:true, body:
+    `<div class="lesson-games">
+       <div class="lg-modes" id="lgModes"></div>
+       <div id="lgExtra"></div>
+       <div id="lgStage"></div>
+     </div>` };
+}
+var GAMES_REQUIRED = ['memory'];
+var GAMES_DONE = {};   // {memory} -> true once that round is completed
+
+/* ---------- BEGINNER flashcard slides ---------- */
+function shuffleArr(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function buildFlashcardSlides(L){
+  const slides=[];
+  const cards=L.cards||[];
+  const heroVisual = L.image
+    ? `<img class="hero-photo" src="${escAttr(L.image)}" alt="${escAttr(L.imageAlt||L.title)}">`
+    : `<div class="big-icon">${L.icon||'🔤'}</div>`;
+
+  // 0 — start
+  slides.push({ label:dlT('lesson.stepStart'), body:
+    `<div class="start-screen">
+       ${heroVisual}
+       <div class="slide-kicker">${esc(L.kicker)}</div>
+       <h2>${esc(L.title)}</h2>
+       <p class="slide-hint">${esc(L.intro||L.summary||'')}</p>
+       <p class="slide-hint">${dlT('lesson.pressStartShort')}</p>
+       ${startCard(
+         `<p><b>Warm-up:</b> Show each picture and say the word. Ask the class to repeat.</p>
+          <p><b>Game:</b> Say a word and have students point to the matching picture.</p>`,
+         `<p>${dlT('lesson.goalsFlowFlashcard')}</p>`
+       )}
+     </div>` });
+
+  let step=0; const K=()=>dlT('lesson.stepPrefix')+' '+(++step);
+
+  // new words — a flashcard GRID (tap any card, in any order), not a
+  // sequential list, so it stays one combined browsing screen (like the
+  // Match game below) rather than one-card-per-screen.
+  const allText = cards.map(c=>(c.letter?c.letter+', ':'')+c.word).join('. ');
+  slides.push({ label:dlT('lesson.stepNewWords'), kicker:K(), title:dlT('lesson.stepNewWords'), hint:dlT('lesson.hintNewWords'), body:
+    `<button class="listen-btn" data-speak="${escAttr(allText)}" onclick="speak(this)">🔊 Listen to all</button>
+     <div class="fc-grid">${cards.map(c=>
+      `<div class="fcard">
+         <div class="fc-emoji">${c.emoji||''}</div>
+         <div class="fc-word">${c.letter?`<span class="fc-letter">${esc(c.letter)} ${esc(c.letter.toLowerCase())}</span>`:''}${esc(c.word)}</div>
+         <button class="word-play" data-speak="${escAttr((c.letter?c.letter+'. ':'')+c.word)}" onclick="speak(this)">▶</button>
+       </div>`).join('')}</div>` });
+
+  // read together — one picture-sentence per screen (only if the lesson
+  // has them); informational (tap ▶ to hear), no gate, same reasoning as
+  // Vocabulary above — was one slide with every sentence stacked.
+  const rd = L.read||[];
+  const readKicker = rd.length ? K() : null;
+  rd.forEach((s,i)=>{
+    slides.push({ label:dlT('lesson.stepRead')+' '+(i+1)+'/'+rd.length, kicker:readKicker, title:dlT('lesson.titleReadTogether'), hint:dlT('lesson.hintReadTogether'), body:
+      `<div class="read-list"><div class="read-row"><button class="word-play" data-speak="${escAttr(s.say)}" onclick="speak(this)">▶</button>
+         <div class="read-sentence">${s.html}</div></div></div>` });
+  });
+
+  // matching game (tap a picture, then its word) — a paired-matching board,
+  // not a sequential list, so it stays one combined screen. Ungated (no
+  // gateKey) — same reasoning as the other steps above.
+  const items = cards.slice(0,8).map((c,i)=>({...c,mid:i}));
+  const pics = shuffleArr(items), words = shuffleArr(items);
+  slides.push({ label:dlT('lesson.stepMatch'), kicker:K(), title:dlT('lesson.titleMatchWords'), hint:dlT('lesson.hintMatch'), body:
+    `<div class="match-wrap">
+       <div class="match-col">${pics.map(c=>`<button class="match-item" data-id="${c.mid}" data-kind="pic" data-word="${escAttr(c.word)}" onclick="matchPick(this)"><span class="mi-emoji">${c.emoji||''}</span></button>`).join('')}</div>
+       <div class="match-col">${words.map(c=>`<button class="match-item" data-id="${c.mid}" data-kind="word" data-word="${escAttr(c.word)}" onclick="matchPick(this)">${esc(c.word)}</button>`).join('')}</div>
+     </div>
+     <div id="matchDone" class="ws-done" style="display:none;">🎉 Great job!</div>` });
+
+  // let's practise — one question per screen (same inline Listen as the
+  // reading lessons' Let's Talk step, reusing talkQuestionHtml — Let's
+  // Practise is structurally identical to Let's Talk, just fed from
+  // L.practise instead of L.discussion). Ungated (no gateKey) — same
+  // reasoning as the other steps above.
+  const pr = L.practise||[];
+  const practiseKicker = pr.length ? K() : null;
+  pr.forEach((q,i)=>{
+    slides.push({ label:dlT('lesson.stepLetsPractise')+' '+(i+1)+'/'+pr.length, kicker:practiseKicker, title:dlT('lesson.stepLetsPractise'), hint:dlT('lesson.hintLetsPractise'), letsTalk:true, body:
+      talkQuestionHtml(q, i, null) });
+  });
+  // games (right before speaking practice)
+  slides.push(gamesSlide(K()));
+
+  // speaking practice (same closing screens as reading lessons)
+  slides.push(...practiceCtaSlides());
+
+  // Results slide — see lessonResultsSlide()'s own comment. Comes LAST,
+  // same reasoning as the reading-lesson builder above.
+  slides.push(lessonResultsSlide(practiseKicker || K()));
+
+  return slides;
+}
+
+/* say a single word aloud (used when a picture is tapped) */
+function sayWord(t){
+  if(!t || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t); u.lang='en-US'; u.rate=0.9;
+  window.speechSynthesis.speak(u);
+}
+
+/* matching game logic */
+var matchSel=null;
+function matchPick(el){
+  if(el.classList.contains('done')) return;
+  sayWord(el.dataset.word);   // read the tapped word aloud (picture or word)
+  if(!matchSel){ matchSel=el; el.classList.add('picked'); return; }
+  if(matchSel===el){ el.classList.remove('picked'); matchSel=null; return; }
+  if(matchSel.dataset.kind===el.dataset.kind){ matchSel.classList.remove('picked'); matchSel=el; el.classList.add('picked'); return; }
+  if(matchSel.dataset.id===el.dataset.id){
+    matchSel.classList.add('done'); el.classList.add('done'); matchSel.classList.remove('picked'); matchSel=null;
+    if(window.DLGames) DLGames.ding();   // happy "ding-ding" on a correct match
+    if([...document.querySelectorAll('.match-item')].every(x=>x.classList.contains('done'))){
+      const d=document.getElementById('matchDone'); if(d) d.style.display='block';
+      if(window.DLGames){
+        DLGames.win();
+        const total = document.querySelectorAll('.match-item').length/2;
+        DLGames.submit(LESSON.id, 'match', total, total);
+      }
+      dlGateAttempt('match', 0, true);
+    }
+  } else {
+    const a=matchSel, b=el; a.classList.add('wrong'); b.classList.add('wrong'); matchSel=null;
+    setTimeout(()=>{a.classList.remove('wrong','picked'); b.classList.remove('wrong');},450);
+  }
+}
+
+/* word-search hint: briefly flash the location of the next unfound word */
+function wsHint(){
+  if(!wsState||!wsState.placements) return;
+  const next = wsState.placements.find(p=>!wsState.found.has(p.word));
+  if(!next) return;
+  next.cells.forEach(p=>{ const td=wsState.table.querySelector(`td[data-r="${p.r}"][data-c="${p.c}"]`);
+    if(td){ td.classList.add('hint'); setTimeout(()=>td.classList.remove('hint'),1600); } });
+}
+
+function updateStepsCurrent(label){
+  const el = document.getElementById('stepsCurrent');
+  if(el) el.textContent = label || '';
+}
+
+/* clicking a sidebar step, from anywhere (Present / PDF / Practice
+   Speaking): normal steps go back to Present mode at that slide, same as
+   always. The three speaking steps (On your own / Talk with AI /
+   Speaking Homework) jump straight into that mode instead of landing on
+   its CTA card first — clicking the sidebar already declares clear
+   intent, no need for a second click. go(i) still runs first so CUR and
+   the sidebar's on/done highlighting stay correct either way. */
+function stepClick(i){
+  const s = SLIDES[i];
+  go(i);
+  if(s && s.practice && s.subMode) showMode('practice', s.subMode);
+  else showMode('present');
+}
+
+var STEP_ENTER_TS = 0;
+function go(i){
+  if(i<0||i>=SLIDES.length) return;
+  // locked path: a student can freely go BACK to anything already passed,
+  // but can't jump ahead of the furthest slide they've unlocked — covers
+  // this direct call plus stepClick()/nextAction()/the ArrowRight handler,
+  // which all funnel through go().
+  if(dlGateActive() && i > furthestUnlockedIndex()) return;
+  speakReset();
+  if(i!==CUR && SLIDES[CUR]){
+    // leaving the Games step — log whatever time was spent playing (games
+    // have no recording/AI feedback of their own, so this is the only signal
+    // that a student practiced there, same streak/dashboard plumbing as
+    // speaking practice) — also counts as one of the four real-progress
+    // signals the Path's "done" state is computed from (see dlProgressTouch).
+    if(SLIDES[CUR].game){
+      if(window.DLGames) DLGames.endTimer();
+      if(LESSON) dlProgressTouch(LESSON.id, 'game');
+    }
+    // leaving "Read the Article" after a real dwell (not just clicking
+    // straight through) — the other progress signal that doesn't need a
+    // recording or a scored answer, since reading itself isn't AI-scored.
+    if(SLIDES[CUR].articleRecorder && LESSON && STEP_ENTER_TS && (Date.now()-STEP_ENTER_TS) >= 15000){
+      dlProgressTouch(LESSON.id, 'read');
+    }
+  }
+  HINTN={}; matchSel=null;
+  CUR=i;
+  STEP_ENTER_TS = Date.now();
+  const s=SLIDES[i];
+  let head='';
+  if(s.title){ head = `<div class="slide-kicker">${esc(s.kicker||'')}</div><h2>${esc(s.title)}</h2>${s.hint?`<p class="slide-hint">${esc(s.hint)}</p>`:''}`; }
+  document.getElementById('slide').innerHTML = head + s.body;
+  updateStepsCurrent((i+1)+' / '+SLIDES.length+' — '+(s.label||''));
+  document.getElementById('prevBtn').disabled = (i===0);
+  const nb=document.getElementById('nextBtn');
+  const last = (i===SLIDES.length-1);
+  nb.disabled = dlGateActive() && !slidePassed(i);   // teachers/guests: never dead, as before
+  // On the last slide (the speaking-practice finish screen) move the
+  // student ON to the next lesson in the Path rather than back to the
+  // library; only fall back to "Back to Library" when there's no next one.
+  const lastLabel = NEXT_LESSON_ID ? dlT('lesson.navNextLesson') : dlT('lesson.navBackToLibrary');
+  nb.textContent = (i===0)?dlT('lesson.navStart'):(last?lastLabel:dlT('lesson.navNext'));
+  document.getElementById('slideCount').textContent = (i+1)+' '+dlT('lesson.of')+' '+SLIDES.length;
+  if(s.ws) initWordSearch();
+  if(s.game) initGamesSlide();
+  if(s.letsTalk) talkRepaintAllChoices();
+  if(s.lessonResults) lessonRepaintResults();
+  if(s.comp) compRepaint();
+  if(s.scramInput) scramRepaint();
+  syncFloatingRecBtn();
+  document.getElementById('slide').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* Next button: advance through the slides; on the last slide (the
+   Results slide) continue to the next lesson in the Path, or back to
+   the library if this was the last lesson. */
+function nextAction(){
+  if(CUR < SLIDES.length-1){ go(CUR+1); return; }
+  location.href = NEXT_LESSON_ID ? ('lesson?id='+encodeURIComponent(NEXT_LESSON_ID)) : '/';
+}
+
+/* global Korean switch — turns Korean on/off across the whole lesson */
+function toggleKR(){
+  KOON = !KOON;
+  const b = document.getElementById('tabKo');
+  b.textContent = dlT(KOON ? 'lesson.translationHide' : 'lesson.translationShow');
+  b.removeAttribute('data-i18n');
+  b.classList.toggle('on', KOON);
+  SLIDES = (LESSON.type==='flashcards') ? buildFlashcardSlides(LESSON) : buildSlides(LESSON);
+  go(CUR);
+}
+
+/* ---------- answer reveal (comprehension + scramble) ---------- */
+function revealAnswer(i){
+  const a=document.getElementById('ans'+i), b=document.getElementById('ansbtn'+i);
+  if(!a) return;
+  const show = !a.classList.contains('show');
+  a.classList.toggle('show', show);
+  if(b) b.textContent = show ? 'Hide answer' : 'Show answer';
+}
+/* progressive hint: reveal one more letter of the answer each press */
+var HINTN={};
+function scramHint(i, word){
+  HINTN[i] = Math.min((HINTN[i]||0)+1, word.length);
+  const n = HINTN[i];
+  const shown = word.slice(0,n).split('').join(' ');
+  const rest = Array(Math.max(0,word.length-n)).fill('_').join(' ');
+  document.getElementById('hint'+i).textContent = (shown + (rest?'  '+rest:'')).trim();
+}
+
+/* Word Scramble: single-row markup (one word to unscramble per screen —
+   see scramRowHtml() in buildSlides() above), checked individually via
+   scramCheck(i) rather than one "Check all" button for every row. Local
+   exact match — one known word per row, no AI call needed. SCRAM_CORRECT
+   survives Back/Next within this page load (like COMP_RESULTS/
+   TALK_RESULTS) so a student's progress isn't lost by navigating away and
+   back. Re-checking a row re-grades it (so fixing a wrong answer and
+   checking again works). Once every row in the lesson is correct, the
+   aggregate score is logged once via the same DLGames.submit() path the
+   Games-tab scramble/memory/match already use (see games.js
+   submitScore()) — best-effort, only tracked server-side for a class
+   student with this lesson assigned as homework, same as those other
+   games. On the locked path, a correct row (or the 3rd attempt, which
+   auto-reveals the answer — see dlGateAttempt()) unlocks the next row. */
+function scramRowHtml(v, i){
+  const target = v.w.toUpperCase();
+  return `<div class="scram-list">
+     <div class="scram-row" id="scramRow${i}"><span class="scram-big">${scramble(v.w)}</span>
+        <input class="scram-input" id="scramIn${i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escAttr(dlT('games.typeHere'))}" data-target="${esc(target)}" onkeydown="if(event.key==='Enter') scramCheck(${i})">
+        <span class="scram-feedback" id="scramFb${i}"></span>
+        <button class="ans-btn hint-btn" onclick="scramHint(${i},'${esc(target)}')">💡 Hint</button>
+        <button class="ans-btn" onclick="revealAnswer(${i})" id="ansbtn${i}">Show answer</button>
+        <span class="hint-show" id="hint${i}"></span>
+        <span class="answer" id="ans${i}">= ${esc(target)}</span></div>
+     <button class="scram-check-all" onclick="scramCheck(${i})" data-i18n="lesson.checkOne">${esc(dlT('lesson.checkOne'))}</button>
+     <div class="scram-summary" id="scramSummary" style="display:none;"></div>
+   </div>`;
+}
+var SCRAM_TOTAL = 0, SCRAM_CORRECT = {}, SCRAM_CHECKED = false;
+async function scramCheck(i){
+  const input = document.getElementById('scramIn'+i);
+  const row = document.getElementById('scramRow'+i);
+  const fb = document.getElementById('scramFb'+i);
+  if(!input) return;
+  const typed = (input.value||'').trim().toUpperCase().replace(/[^A-Z]/g,'');
+  const target = (input.dataset.target||'').toUpperCase().replace(/[^A-Z]/g,'');
+  let correct = !!typed && typed === target;
+  SCRAM_CHECKED = true;
+  SCRAM_CORRECT[i] = correct;
+  if(row){ row.classList.toggle('correct', correct); row.classList.toggle('wrong', !correct); }
+  if(fb){ fb.textContent = correct ? dlT('lesson.scramCorrect') : dlT('lesson.scramWrong'); fb.className = 'scram-feedback ' + (correct?'correct':'wrong'); }
+  if(correct && window.DLGames) DLGames.ding();
+  const g = await dlGateAttempt('scramble', i, correct);
+  if(g.neededHelp && !correct){
+    correct = true; SCRAM_CORRECT[i] = true;   // don't leave the student stuck on this row
+    const a=document.getElementById('ans'+i); if(a && !a.classList.contains('show')) revealAnswer(i);
+    if(fb){ fb.textContent = dlT('lesson.gateNeedHelp'); fb.className = 'scram-feedback'; }
+  }
+  const total = SCRAM_TOTAL || Object.keys(SCRAM_CORRECT).length;
+  const correctCount = Object.values(SCRAM_CORRECT).filter(Boolean).length;
+  const summary = document.getElementById('scramSummary');
+  if(summary){ summary.textContent = correctCount + ' / ' + total + ' ' + dlT('lesson.scramCorrectCount'); summary.style.display = 'block'; }
+  // log the aggregate score once every row in the lesson has been passed
+  if(SCRAM_TOTAL && correctCount >= SCRAM_TOTAL && window.DLGames) DLGames.submit(LESSON.id, 'scramble', correctCount, SCRAM_TOTAL);
+}
+/* repaint correct/wrong state + summary after the slide's DOM is rebuilt
+   (Back/Next, or a Korean-toggle rebuild) — mirrors compRepaint()/
+   talkRepaintAllChoices(). Only does anything once "Check all" has actually
+   been pressed this page load; an unchecked row is left exactly as a
+   fresh slide would render it. */
+function scramRepaint(){
+  if(!SCRAM_CHECKED) return;
+  let correctCount = 0;
+  const total = SCRAM_TOTAL || Object.keys(SCRAM_CORRECT).length;
+  Object.keys(SCRAM_CORRECT).forEach(i=>{
+    const correct = SCRAM_CORRECT[i];
+    const row = document.getElementById('scramRow'+i);
+    const fb = document.getElementById('scramFb'+i);
+    if(row){ row.classList.toggle('correct', correct); row.classList.toggle('wrong', !correct); }
+    if(fb){ fb.textContent = correct ? dlT('lesson.scramCorrect') : dlT('lesson.scramWrong'); fb.className = 'scram-feedback ' + (correct?'correct':'wrong'); }
+    if(correct) correctCount++;
+  });
+  const summary = document.getElementById('scramSummary');
+  if(summary){ summary.textContent = correctCount + ' / ' + total + ' ' + dlT('lesson.scramCorrectCount'); summary.style.display = 'block'; }
+}
+
+/* ---------- interactive word search (drag to select) ---------- */
+let wsState=null;
+function initWordSearch(){
+  const table=document.getElementById('wsTable');
+  if(!table) return;
+  wsState = { table, start:null, found:new Set(), placements:WS.placements };
+  const cellAt=(e)=>{
+    // touchend/touchcancel carry an EMPTY e.touches (the ending touch is
+    // only in e.changedTouches) — falling back to e.touches[0].clientX
+    // there silently breaks "release" detection, so check both lists.
+    const pt = (e.touches && e.touches.length) ? e.touches[0]
+             : (e.changedTouches && e.changedTouches.length) ? e.changedTouches[0]
+             : e;
+    const t=document.elementFromPoint(pt.clientX, pt.clientY);
+    return (t && t.tagName==='TD' && t.dataset.r!==undefined) ? t : null;
+  };
+  const lineCells=(a,b)=>{
+    const r0=+a.dataset.r,c0=+a.dataset.c,r1=+b.dataset.r,c1=+b.dataset.c;
+    const dr=Math.sign(r1-r0), dc=Math.sign(c1-c0);
+    const len=Math.max(Math.abs(r1-r0),Math.abs(c1-c0));
+    // only straight lines (row, column, or 45° diagonal)
+    if(!(r0===r1 || c0===c1 || Math.abs(r1-r0)===Math.abs(c1-c0))) return null;
+    const cells=[];
+    for(let i=0;i<=len;i++) cells.push({r:r0+dr*i,c:c0+dc*i});
+    return cells;
+  };
+  const paint=(cells)=>{
+    table.querySelectorAll('td.sel').forEach(td=>td.classList.remove('sel'));
+    if(!cells) return;
+    cells.forEach(p=>{ const td=table.querySelector(`td[data-r="${p.r}"][data-c="${p.c}"]`); if(td) td.classList.add('sel'); });
+  };
+  const keyOf=(cells)=>cells.map(c=>c.r+','+c.c).sort().join(' ');
+
+  const onDown=(e)=>{ const td=cellAt(e); if(td){ wsState.start=td; paint([{r:+td.dataset.r,c:+td.dataset.c}]); if(e.cancelable) e.preventDefault(); } };
+  const onMove=(e)=>{ if(!wsState.start) return; const td=cellAt(e); if(td){ const cells=lineCells(wsState.start,td); paint(cells); } if(e.cancelable) e.preventDefault(); };
+  const onUp=(e)=>{
+    if(!wsState.start) return;
+    const td=cellAt(e) || wsState.start;
+    const cells= td ? lineCells(wsState.start,td) : null;
+    wsState.start=null;
+    table.querySelectorAll('td.sel').forEach(t=>t.classList.remove('sel'));
+    if(!cells){ return; }
+    const k=keyOf(cells);
+    const hit = wsState.placements.find(p=>!wsState.found.has(p.word) && keyOf(p.cells)===k);
+    if(hit){
+      wsState.found.add(hit.word);
+      hit.cells.forEach(p=>{ const c=table.querySelector(`td[data-r="${p.r}"][data-c="${p.c}"]`); if(c) c.classList.add('found'); });
+      const li=document.querySelector(`#wsWords li[data-word="${hit.word}"]`); if(li) li.classList.add('struck');
+      if(wsState.found.size===wsState.placements.length){ const d=document.getElementById('wsDone'); if(d) d.style.display='block'; dlGateAttempt('wordsearch', 0, true); }
+    }
+  };
+  // Use plain touch + mouse events rather than Pointer Events: some
+  // in-app browsers (KakaoTalk, Naver, Instagram) have buggy/partial
+  // Pointer Event + setPointerCapture support, which silently broke
+  // dragging for exactly the mobile Korean audience this site targets.
+  // Touch events are the most universally reliable option there.
+  // onDown is bound to the fresh table each time the slide renders;
+  // the document-level move/up dispatchers are attached only ONCE and
+  // call whatever handlers the current wsState holds (no stacking).
+  table.addEventListener('touchstart', onDown, {passive:false});
+  table.addEventListener('mousedown', onDown);
+  wsState.onMove = onMove; wsState.onUp = onUp;
+  if(!window._wsDocBound){
+    window._wsDocBound = true;
+    document.addEventListener('touchmove', e=>{ if(wsState&&wsState.onMove) wsState.onMove(e); }, {passive:false});
+    document.addEventListener('touchend',  e=>{ if(wsState&&wsState.onUp)   wsState.onUp(e); });
+    document.addEventListener('mousemove', e=>{ if(wsState&&wsState.onMove) wsState.onMove(e); });
+    document.addEventListener('mouseup',   e=>{ if(wsState&&wsState.onUp)   wsState.onUp(e); });
+  }
+}
+
+/* keyboard arrows for presenting */
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('presentView').style.display==='none') return;
+  if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if(e.key==='ArrowRight') go(CUR+1);
+  if(e.key==='ArrowLeft') go(CUR-1);
+});
+
+/* ---------- Assign homework (teacher) ---------- */
+async function openAssignHomework(){
+  const modal = document.getElementById('assignModal');
+  const list = document.getElementById('assignClassList');
+  modal.style.display = 'flex';
+  list.innerHTML = '<div class="assign-loading">'+dlT('homework.loadingClasses')+'</div>';
+  try{
+    const token = dlReadToken();
+    const r = await fetch('/api/save-profile?classes=1', { headers:{ Authorization:'Bearer '+token } });
+    const j = await r.json();
+    const classes = (j && j.classes) || [];
+    if(!classes.length){
+      list.innerHTML = `<div class="assign-empty">${dlT('homework.noClasses')} <a href="/teacher">${dlT('homework.createClass')}</a></div>`;
+      return;
+    }
+    list.innerHTML = classes.map(c=>
+      `<button class="assign-class-row" onclick="doAssign('${c.id}', this)">
+         <span>${esc(c.name)}</span><span class="assign-count">${c.students} ${dlT('homework.students')}</span>
+       </button>`).join('');
+  }catch(e){ list.innerHTML = '<div class="assign-empty">'+dlT('homework.loadError')+'</div>'; }
+}
+function closeAssignHomework(){ document.getElementById('assignModal').style.display='none'; }
+async function doAssign(classId, btn){
+  btn.disabled = true; const original = btn.innerHTML;
+  btn.innerHTML = '<span>'+dlT('homework.assigning')+'</span>';
+  try{
+    const token = dlReadToken();
+    const r = await fetch('/api/save-profile', {
+      method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ assignHomework:{ classId, lessonId: LESSON.id } })
+    });
+    const j = await r.json();
+    if(!r.ok){ btn.innerHTML = original; btn.disabled=false; alert(j.error||dlT('homework.loadError')); return; }
+    btn.innerHTML = `<span>✓ ${esc(j.className||'')}</span><span class="assign-count">${dlT('homework.assigned')}</span>`;
+  }catch(e){ btn.innerHTML = original; btn.disabled=false; }
+}
+
+function showMode(m, subMode){
+  document.getElementById('presentView').style.display = (m==='present')?'block':'none';
+  document.getElementById('pdfView').style.display = (m==='pdf')?'block':'none';
+  document.getElementById('practiceView').style.display = (m==='practice')?'block':'none';
+  document.getElementById('tabPresent').classList.toggle('on', m==='present');
+  document.getElementById('tabPdf').classList.toggle('on', m==='pdf');
+  document.getElementById('tabPractice').classList.toggle('on', m==='practice');
+  speakReset();
+  if(m!=='present' && SLIDES[CUR] && SLIDES[CUR].game && window.DLGames) DLGames.endTimer();
+  if(m==='practice') practiceEnter(subMode); else practiceLeave();
+  syncFloatingRecBtn();
+}
+
+/* ---------- in-lesson Games step (Memory) ----------
+   Reuses the shared DLGames engine (games.js) to build games from THIS
+   lesson's own words, played inline as a task in the flow. Practice-time
+   tracking starts the moment this step opens (no visible timer/Start
+   button here — go(), on leaving this slide, already calls
+   DLGames.endTimer() to log whatever was played, same as before). */
+var LG = { mode:'', hard:false, players:1 };   // solo only — the multiplayer picker was removed as clutter; players stays 1 for everyone
+function initGamesSlide(){
+  const stage = document.getElementById('lgStage');
+  const modesEl = document.getElementById('lgModes');
+  const extraEl = document.getElementById('lgExtra');
+  if(!stage || typeof DLGames === 'undefined') return;
+  DLGames.startTimer();
+  const Tr = (LESSON.translations && LESSON.translations.ko) ? LESSON.translations.ko : null;
+  const info = DLGames.buildItems(LESSON, Tr);
+  const sentInfo = DLGames.buildSentenceItems(LESSON, Tr);
+  const modes = DLGames.modesFor(info);
+  if(modes.indexOf(LG.mode) < 0) LG.mode = modes[0];
+
+  // Hard mode: whole article sentences EN<->KO instead of single words —
+  // reuses the existing 'korean' matching mechanics, just with
+  // sentence-length items.
+  function isHardMemory(){ return LG.hard && sentInfo.items.length>=2; }
+  function currentItems(){ return isHardMemory() ? sentInfo.items : info.items; }
+  function currentMode(){ return isHardMemory() ? 'korean' : LG.mode; }
+
+  function play(){
+    DLGames.play(stage, 'memory', currentItems(), currentMode(), LESSON.id, { players: LG.players, sentence: isHardMemory() });
+  }
+
+  function renderExtra(){
+    let html = '';
+    if(sentInfo.items.length>=2){
+      html += `<div class="lg-modes">
+        <button class="lg-mode${!LG.hard?' on':''}" data-diff="easy">${esc(dlT('games.diffEasy'))}</button>
+        <button class="lg-mode${LG.hard?' on':''}" data-diff="hard">${esc(dlT('games.diffHard'))}</button>
+      </div>`;
+    }
+    extraEl.innerHTML = html;
+    extraEl.querySelectorAll('[data-diff]').forEach(b=> b.onclick = ()=>{
+      LG.hard = b.dataset.diff==='hard'; renderModes(); renderExtra(); play();
+    });
+  }
+
+  function renderModes(){
+    if(isHardMemory() || modes.length < 2){ modesEl.innerHTML=''; return; }
+    if(modes.indexOf(LG.mode) < 0) LG.mode = modes[0];
+    modesEl.innerHTML = modes.map(m=>
+      `<button class="lg-mode${m===LG.mode?' on':''}" data-mode="${m}">${esc(DLGames.modeLabel(m))}</button>`).join('');
+    modesEl.querySelectorAll('.lg-mode').forEach(b=> b.onclick = ()=>{
+      LG.mode = b.dataset.mode; renderModes(); play();
+    });
+  }
+
+  renderModes();
+  renderExtra();
+  play();
+}
+
+/* ============================================================
+   PRACTICE SPEAKING — one item (word / sentence / question) at a
+   time. Listen (reuses the existing TTS speak()), then record
+   yourself and hear it back immediately. Nothing recorded is ever
+   uploaded or saved anywhere — only the TIME spent practicing is
+   logged locally, to power the streak/calendar on the Path page.
+   ============================================================ */
+let P_QUEUE = [], P_IDX = 0;
+let P_SESSION_START = null;
+
+async function practiceEnter(mode){
+  P_MODE = mode || P_MODE || 'solo';
+  document.getElementById('pSoloWrap').style.display = (P_MODE==='solo') ? '' : 'none';
+  document.getElementById('pChatWrap').style.display = (P_MODE==='chat') ? '' : 'none';
+  P_SESSION_START = Date.now();
+  if(P_MODE==='chat'){ chatEnter(); return; }
+  const firstBuild = !P_QUEUE.length;
+  if(firstBuild) P_QUEUE = dlBuildPracticeQueue(LESSON, LESSON.translations && LESSON.translations.ko);
+  if(firstBuild){
+    const savedIdx = await practiceLoadProgress();
+    if(savedIdx != null && savedIdx > 0 && savedIdx < P_QUEUE.length) P_IDX = savedIdx;
+  }
+  practiceRender();
+}
+async function practiceLoadProgress(){
+  const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+  if(!token || !LESSON) return null;
+  try{
+    const r = await fetch('/api/save-profile?lessonId='+encodeURIComponent(LESSON.id), { headers:{ Authorization:'Bearer '+token } });
+    if(!r.ok) return null;
+    const j = await r.json();
+    return (typeof j.idx === 'number') ? j.idx : null;
+  }catch(e){ return null; }
+}
+function practiceSaveProgress(idx){
+  const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+  if(!token || !LESSON) return;
+  fetch('/api/save-profile', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+    body: JSON.stringify({ lessonId: LESSON.id, idx })
+  }).catch(()=>{});
+}
+function practiceLeave(){
+  chatStopMic();
+  if(P_SESSION_START){
+    dlLogPracticeSeconds((Date.now()-P_SESSION_START)/1000);
+    P_SESSION_START = null;
+  }
+}
+// count time spent even if they just close the tab / navigate away
+// while still in Practice mode
+window.addEventListener('beforeunload', () => {
+  if(P_SESSION_START) dlLogPracticeSeconds((Date.now()-P_SESSION_START)/1000);
+});
+
+function practiceLabelFor(type){
+  return type==='word' ? dlT('practice.wordLabel') : type==='question' ? dlT('practice.questionLabel') : dlT('practice.lineLabel');
+}
+function practiceRender(){
+  const done = document.getElementById('pDone');
+  const body = document.querySelectorAll('#practiceView .practice-kicker, #practiceView .practice-count, #practiceView .practice-text, #practiceView .practice-sub, #practiceView .practice-controls, #practiceView .practice-ko');
+  if(P_IDX >= P_QUEUE.length){
+    body.forEach(el=>el.style.display='none');
+    document.getElementById('pEmoji').style.display='none';
+    // finished the review — send them into Talk with AI next rather than
+    // straight to a new lesson, so it's always the actual last step (its
+    // own chatNextLessonBtn is what offers the next lesson/Path link —
+    // see chatEnter()) instead of something students could skip past
+    // without ever seeing it.
+    done.style.display='block';
+    return;
+  }
+  body.forEach(el=>el.style.display='');
+  done.style.display='none';
+  const item = P_QUEUE[P_IDX];
+  document.getElementById('pKicker').textContent = practiceLabelFor(item.type);
+  document.getElementById('pCount').textContent = (P_IDX+1)+' '+dlT('practice.of')+' '+P_QUEUE.length;
+  const emojiEl = document.getElementById('pEmoji');
+  emojiEl.textContent = item.emoji || '';
+  emojiEl.style.display = item.emoji ? 'block' : 'none';
+  // Sentence cards keep their inline pictures (the same emoji-in-text
+  // markup used in the "Read together" reading section); words/questions
+  // are plain text. item.html only ever comes from our own lesson data,
+  // the same source the reading view already renders with innerHTML.
+  const textEl = document.getElementById('pText');
+  if(item.html){ textEl.innerHTML = item.html; }
+  else { textEl.textContent = item.text; }
+  document.getElementById('pSub').textContent = item.sub || '';
+  document.getElementById('pSub').style.display = item.sub ? 'block' : 'none';
+  // Practice mode always shows Korean when available, regardless of the
+  // global "Show Korean" toggle used in Present/PDF mode — this mode's
+  // whole purpose is reinforcing vocabulary.
+  const koShow = !!item.ko;
+  document.getElementById('pKo').textContent = koShow ? item.ko : '';
+  document.getElementById('pKo').style.display = koShow ? 'block' : 'none';
+  document.getElementById('pPrevBtn').disabled = (P_IDX===0);
+  document.getElementById('pNextBtn').textContent = (P_IDX===P_QUEUE.length-1) ? dlT('practice.finish') : dlT('practice.next');
+}
+function practiceGo(i){
+  if(i<0 || i>P_QUEUE.length) return;
+  speakReset();
+  P_IDX = i;
+  practiceRender();
+  practiceSaveProgress(i);
+}
+function practiceListen(){
+  const item = P_QUEUE[P_IDX];
+  if(!item) return;
+  const btn = document.getElementById('pListenBtn');
+  const speakText = item.sub ? (item.text+'. '+item.sub+'.') : item.text;
+  btn.setAttribute('data-speak', speakText);
+  speak(btn);
+}
+
+/* ============================================================
+   TALK WITH AI — the second Speaking Practice mode. A short,
+   spoken-style back-and-forth about the lesson: the student's turn
+   comes in by mic (browser speech recognition) or typed text, the
+   reply comes from /api/speak-chat (DeepSeek) and is read aloud.
+   Nothing said here is stored — only that a turn happened (server
+   logs one 'speaking' row per turn, no transcript, for the streak).
+   ============================================================ */
+let P_MODE = 'solo';               // 'solo' | 'chat' — set by practiceEnter(), driven by which sidebar step was clicked
+let CHAT_HISTORY = [];             // [{role:'user'|'assistant', text}] — in memory only
+let CHAT_SEEDED = false;
+let CHAT_RECOG = null, CHAT_LISTENING = false, CHAT_SENDING = false, CHAT_MUTED = false;
+let CHAT_VOICE_MODE = false;       // true once the student has used the mic this session — drives auto-restarting it after each AI reply
+// A browser can claim to support SpeechRecognition (the constructor exists)
+// while never actually producing a result — Brave ships the constructor but
+// blocks the underlying speech service by default, so recognition just
+// errors with 'network' forever. CHAT_MIC_BROKEN flips on after enough
+// consecutive network failures and hides the mic button in favor of the
+// typed input that's already always available here.
+let CHAT_MIC_FAILS = 0, CHAT_MIC_BROKEN = false;
+
+function chatEnter(){
+  const micOk = !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !CHAT_MIC_BROKEN;
+  document.getElementById('chatMicBtn').style.display = micOk ? '' : 'none';
+  const note = document.getElementById('chatMicNote');
+  note.style.display = micOk ? 'none' : 'block';
+  if(CHAT_MIC_BROKEN){ note.textContent = dlT('practice.micNotWorking'); note.removeAttribute('data-i18n'); }
+  // same "what's next" link as the solo practice's done screen, so
+  // Talk with AI (the last step) also offers a way straight to the next
+  // lesson in the Path instead of leaving the student with nowhere to go
+  const nb = document.getElementById('chatNextLessonBtn');
+  if(nb){
+    if(NEXT_LESSON_ID){ nb.textContent = dlT('lesson.navNextLesson'); nb.href = 'lesson?id='+encodeURIComponent(NEXT_LESSON_ID); }
+    else { nb.textContent = dlT('practice.backToPath'); nb.href = '/path'; }
+  }
+  if(!CHAT_SEEDED){
+    CHAT_SEEDED = true;
+    const opener = chatOpenerText();
+    chatAppendMessage('assistant', opener);
+    CHAT_HISTORY.push({ role:'assistant', text: opener });
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    chatMaybeSpeak(opener);
+  }
+}
+/* opens the conversation with one of the lesson's own discussion/practise
+   questions, so it always has something real to talk about */
+function chatOpenerText(){
+  const qs = (LESSON.type==='flashcards' ? LESSON.practise : LESSON.discussion) || [];
+  const q = qs.length ? talkQText(qs[Math.floor(Math.random()*qs.length)]) : null;
+  return q ? ("Hi! I read this lesson with you. " + q) : "Hi! What did you think about this lesson?";
+}
+function chatAppendMessage(role, text){
+  const log = document.getElementById('chatLog');
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ' + (role==='user' ? 'me' : 'ai');
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  return div;
+}
+function chatMaybeSpeak(text){
+  if(CHAT_MUTED || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+function chatOnMuteChange(){
+  CHAT_MUTED = document.getElementById('chatMuteBox').checked;
+  if(CHAT_MUTED && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+function chatShowError(msg){
+  const el = document.getElementById('chatError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function chatSetSending(sending){
+  CHAT_SENDING = sending;
+  document.getElementById('chatSendBtn').disabled = sending;
+  document.getElementById('chatMicBtn').disabled = sending;
+}
+function chatSendTyped(){
+  const input = document.getElementById('chatTextInput');
+  const text = input.value;
+  input.value = '';
+  CHAT_VOICE_MODE = false;
+  chatSendMessage(text);
+}
+async function chatSendMessage(text){
+  text = (text||'').trim();
+  if(!text || CHAT_SENDING) return;
+  document.getElementById('chatError').style.display = 'none';
+  chatAppendMessage('user', text);
+  document.getElementById('chatTyping').style.display = 'block';
+  chatSetSending(true);
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token){ chatShowError(dlT('practice.chatLoginNeeded')); return; }
+    const isFlashcards = LESSON.type === 'flashcards';
+    const ctx = {
+      title: LESSON.title,
+      topic: LESSON.kicker || '',
+      vocab: isFlashcards ? (LESSON.cards||[]).map(c=>({ w:c.word })) : (LESSON.vocab||[]),
+      discussion: (isFlashcards ? (LESSON.practise||[]) : (LESSON.discussion||[])).map(talkQText)
+    };
+    const r = await fetch('/api/speak-chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ lessonId: LESSON.id, context: ctx, history: CHAT_HISTORY.slice(-12), message: text })
+    });
+    CHAT_HISTORY.push({ role:'user', text });
+    if(!r.ok){
+      const j = await r.json().catch(()=>({}));
+      chatShowError(j.error || dlT('practice.chatError'));
+      return;
+    }
+    document.getElementById('chatTyping').style.display = 'none';
+    await chatStreamReply(r);
+  }catch(e){
+    chatShowError(dlT('practice.chatError'));
+  }finally{
+    document.getElementById('chatTyping').style.display = 'none';
+    chatSetSending(false);
+  }
+}
+// Reads the streamed plain-text reply from /api/speak-chat, updating one
+// growing chat bubble live and speaking each finished sentence as soon as
+// it's complete instead of waiting for the whole reply to arrive — this is
+// most of what makes a turn feel fast instead of laggy. Once the AI's whole
+// reply has actually finished playing (not just the network stream), the
+// mic is picked back up automatically if the student got here by voice.
+async function chatStreamReply(r){
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  const bubble = chatAppendMessage('assistant', '');
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  const pendingSpeech = [];
+  const queueSpeech = (text) => {
+    if(CHAT_MUTED || !('speechSynthesis' in window) || !text) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.95;
+    pendingSpeech.push(new Promise(resolve => { u.onend = resolve; u.onerror = resolve; }));
+    window.speechSynthesis.speak(u);
+  };
+  let full = '', spokenUpTo = 0;
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    full += decoder.decode(value, { stream:true });
+    bubble.textContent = full;
+    bubble.parentNode.scrollTop = bubble.parentNode.scrollHeight;
+    let m;
+    while((m = full.slice(spokenUpTo).match(/^[\s\S]*?[.!?]["')\]]?(?=\s|$)/))){
+      queueSpeech(m[0]);
+      spokenUpTo += m[0].length;
+    }
+  }
+  full = full.trim();
+  if(!full){ bubble.remove(); chatShowError(dlT('practice.chatError')); return; }
+  if(spokenUpTo < full.length) queueSpeech(full.slice(spokenUpTo));
+  CHAT_HISTORY.push({ role:'assistant', text: full });
+
+  await Promise.all(pendingSpeech);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(CHAT_VOICE_MODE && !CHAT_MUTED && SR) chatToggleMic();
+}
+function chatToggleMic(){
+  if(CHAT_LISTENING){ chatStopMic(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR) return;
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  CHAT_RECOG = new SR();
+  CHAT_RECOG.lang = 'en-US';
+  CHAT_RECOG.interimResults = false;
+  CHAT_RECOG.maxAlternatives = 1;
+  CHAT_RECOG.onstart = () => {
+    CHAT_LISTENING = true;
+    const btn = document.getElementById('chatMicBtn');
+    btn.classList.add('on');
+    btn.textContent = dlT('practice.chatListening');
+  };
+  CHAT_RECOG.onresult = (e) => {
+    const transcript = e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript;
+    if(transcript){ CHAT_VOICE_MODE = true; CHAT_MIC_FAILS = 0; chatSendMessage(transcript); }
+  };
+  CHAT_RECOG.onerror = (e) => {
+    // 'network' is the specific error Brave throws when it's blocked the
+    // speech service it would otherwise use — a strong, real signal this
+    // browser can't do this at all, unlike a one-off 'no-speech' timeout
+    if(e.error === 'network'){
+      CHAT_MIC_FAILS++;
+      if(CHAT_MIC_FAILS >= 2){ CHAT_MIC_BROKEN = true; chatEnter(); }
+    }
+    chatStopMic();
+  };
+  CHAT_RECOG.onend = () => chatStopMic();
+  try{ CHAT_RECOG.start(); }catch(e){ chatStopMic(); }
+}
+function chatStopMic(){
+  CHAT_LISTENING = false;
+  if(CHAT_RECOG){ try{ CHAT_RECOG.stop(); }catch(e){} CHAT_RECOG = null; }
+  const btn = document.getElementById('chatMicBtn');
+  if(btn){ btn.classList.remove('on'); btn.textContent = dlT('practice.chatMic'); }
+}
+
+/* ============================================================
+   LIVE VOICE (BETA) — Tier 2 test only, see api/speak-chat.js
+   mode:'live-token' for the allowlist gate and CLAUDE.md for the plan.
+   Once connected, this talks DIRECTLY to Google's Gemini Live API over
+   a WebSocket — our own backend's only role was minting the short-lived
+   token, so no audio or conversation text passes through this site's
+   servers while a Live Voice session is running.
+   ============================================================ */
+function chatShowSubmode(which){
+  document.getElementById('chatSubmodeBtnChat').classList.toggle('on', which==='chat');
+  document.getElementById('chatSubmodeBtnLive').classList.toggle('on', which==='live');
+  document.getElementById('chatPanel').style.display = (which==='chat') ? '' : 'none';
+  document.getElementById('livePanel').style.display = (which==='live') ? '' : 'none';
+  if(which==='chat'){
+    liveStop();
+  } else {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    chatStopMic();
+  }
+}
+
+let LIVE_WS = null, LIVE_AUDIO_CTX = null, LIVE_MIC_STREAM = null, LIVE_MIC_NODE = null;
+let LIVE_PLAY_TIME = 0, LIVE_CONNECTING = false;
+let LIVE_TRANSCRIPT = [], LIVE_SESSION_START = null;   // for the end-of-session review (mode:'live-review')
+let LIVE_CUR_BUBBLE = null, LIVE_CUR_ROLE = null; // the bubble currently being grown by liveAppendTranscript
+
+function liveSetStatus(text){ const el = document.getElementById('liveStatus'); if(el) el.textContent = text; }
+function liveShowError(msg){
+  const el = document.getElementById('liveError');
+  if(!el) return;
+  el.style.whiteSpace = 'pre-wrap';
+  el.style.fontFamily = 'monospace';
+  el.style.fontSize = '12px';
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+// A clean, expected end of the session (see the onclose handler further
+// down) — no scary technical text, just a normal wrap-up, then (best-
+// effort) an overall review of the conversation if anything was actually
+// said. Beta sessions currently have a short cap, so this doubles as an
+// honest heads-up about that instead of leaving a student wondering why
+// it stopped.
+async function liveShowSessionEnded(){
+  liveSetStatus(dlT('practice.liveSessionEnded'));
+  const full = LIVE_TRANSCRIPT.map(t => (t.role==='me' ? 'Student: ' : 'AI: ') + t.text).join('\n').trim();
+  if(!full) return;
+  const scoring = document.getElementById('liveReviewScoring');
+  const result = document.getElementById('liveReviewResult');
+  if(result) result.style.display = 'none';
+  if(scoring) scoring.style.display = 'flex';
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    const secondsSpent = LIVE_SESSION_START ? Math.round((Date.now() - LIVE_SESSION_START) / 1000) : null;
+    const r = await fetch('/api/speak-chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ mode:'live-review', lessonId: LESSON.id, transcript: full, secondsSpent })
+    });
+    const j = await r.json();
+    if(!r.ok || !result) return;
+    document.getElementById('liveReviewScoreText').textContent = j.score+' / '+j.max;
+    document.getElementById('liveReviewFeedbackText').textContent = j.feedback;
+    result.style.display = 'block';
+    if(LESSON) dlProgressTouch(LESSON.id, 'talk');
+  }catch(e){ /* best-effort — not getting a review shouldn't feel like an error to the student */ }
+  finally{ if(scoring) scoring.style.display = 'none'; }
+}
+// Google streams the transcript as many small text fragments per turn, not
+// one message — grow the current turn's bubble instead of making a new one
+// per fragment, and only start a fresh bubble when the speaker changes (or
+// serverContent.turnComplete tells us the turn just ended).
+function liveAppendTranscript(role, text){
+  // also keep a plain-text copy for the end-of-session review (mode:
+  // 'live-review') — same growing-the-last-line idea as the chat bubble
+  // above, just grouped by speaker turn instead of DOM.
+  const last = LIVE_TRANSCRIPT[LIVE_TRANSCRIPT.length - 1];
+  if(last && last.role === role) last.text += text;
+  else LIVE_TRANSCRIPT.push({ role, text });
+
+  const log = document.getElementById('liveLog');
+  if(!log) return;
+  if(LIVE_CUR_BUBBLE && LIVE_CUR_ROLE === role){
+    LIVE_CUR_BUBBLE.textContent += text;
+    log.scrollTop = log.scrollHeight;
+    return;
+  }
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ' + (role==='me' ? 'me' : 'ai');
+  div.textContent = text;
+  LIVE_CUR_BUBBLE = div;
+  LIVE_CUR_ROLE = role;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function liveStart(){
+  if(LIVE_WS || LIVE_CONNECTING) return;
+  LIVE_CONNECTING = true;
+  document.getElementById('liveError').style.display = 'none';
+  const prevResult = document.getElementById('liveReviewResult'); if(prevResult) prevResult.style.display = 'none';
+  liveSetStatus('Connecting…');
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token){ liveShowError(dlT('practice.chatLoginNeeded')); return; }
+    const isFlashcards = LESSON.type === 'flashcards';
+    const ctx = {
+      title: LESSON.title,
+      topic: LESSON.kicker || '',
+      vocab: isFlashcards ? (LESSON.cards||[]).map(c=>({ w:c.word })) : (LESSON.vocab||[]),
+      discussion: (isFlashcards ? (LESSON.practise||[]) : (LESSON.discussion||[])).map(talkQText)
+    };
+    const r = await fetch('/api/speak-chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ mode:'live-token', lessonId: LESSON.id, context: ctx })
+    });
+    const rawText = await r.text();
+    let j = {};
+    try{ j = JSON.parse(rawText); }catch(e){ /* leave j={} — rawText itself becomes the visible detail below */ }
+    if(!r.ok){
+      liveShowError((j.error || 'Could not start Live Voice.') + '\n\n' + (j.detail || rawText || '(no response body at all — HTTP ' + r.status + ')'));
+      return;
+    }
+
+    LIVE_MIC_STREAM = await navigator.mediaDevices.getUserMedia({ audio:true });
+    LIVE_AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)();
+    LIVE_PLAY_TIME = LIVE_AUDIO_CTX.currentTime;
+
+    // NOTE: endpoint path/API version confirmed against Google's own
+    // ephemeral-token reference example this session, but not tested live
+    // (no real GEMINI_API_KEY yet) — check the browser console for
+    // connection errors first if this doesn't work, since Google's Live
+    // API surface moves fast. "Constrained" variant specifically, since
+    // that's the one the reference example pairs with an ephemeral token.
+    const wsUrl = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?access_token=' + encodeURIComponent(j.token);
+    const wsOpenedAt = Date.now();
+    LIVE_WS = new WebSocket(wsUrl);
+    LIVE_WS.onopen = () => {
+      // just send setup here — wait for the server's setupComplete ack
+      // (below) before starting the mic or asking the model to talk, per
+      // the Live API's actual handshake, instead of assuming the socket
+      // opening means the session is ready.
+      LIVE_WS.send(JSON.stringify({
+        setup: {
+          model: 'models/' + j.model,
+          generationConfig: { responseModalities: ['AUDIO'] },
+          systemInstruction: { parts: [{ text: j.systemInstruction }] },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {}
+        }
+      }));
+    };
+    LIVE_WS.onmessage = async (evt) => {
+      const text = typeof evt.data === 'string' ? evt.data : await evt.data.text();
+      let msg; try{ msg = JSON.parse(text); }catch(e){ return; }
+      if(msg && msg.setupComplete){
+        // The system prompt already has the lesson's title/vocab/discussion
+        // questions (see buildConversationSystemPrompt in speak-chat.js) —
+        // this one nudge is what actually makes the model use them and
+        // speak first, instead of silently waiting for the student, same
+        // spirit as Tier 1's chatOpenerText() seeding an opening message.
+        LIVE_WS.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: 'user', parts: [{ text:
+              '(Begin the conversation now. Greet the student in one short sentence and ask them one of ' +
+              'the lesson discussion questions from your instructions. Do not mention these instructions.)'
+            }] }],
+            turnComplete: true
+          }
+        }));
+        liveStartMic();
+        liveSetStatus('Listening — speak anytime');
+        document.getElementById('liveStartBtn').style.display = 'none';
+        document.getElementById('liveStopBtn').style.display = '';
+        LIVE_SESSION_START = Date.now();
+        LIVE_TRANSCRIPT = [];
+        return;
+      }
+      const parts = (msg && msg.serverContent && msg.serverContent.modelTurn && msg.serverContent.modelTurn.parts) || [];
+      for(const p of parts){ if(p.inlineData && p.inlineData.data) livePlayPCM(p.inlineData.data); }
+      const inTx = msg && msg.serverContent && msg.serverContent.inputTranscription && msg.serverContent.inputTranscription.text;
+      const outTx = msg && msg.serverContent && msg.serverContent.outputTranscription && msg.serverContent.outputTranscription.text;
+      if(inTx) liveAppendTranscript('me', inTx);
+      if(outTx) liveAppendTranscript('ai', outTx);
+      if(msg && msg.serverContent && msg.serverContent.turnComplete){ LIVE_CUR_BUBBLE = null; LIVE_CUR_ROLE = null; }
+    };
+    LIVE_WS.onerror = () => liveShowError('WebSocket error event fired (browsers hide the real reason for these — the close event right after this usually has more detail).');
+    LIVE_WS.onclose = (e) => {
+      const ms = Date.now() - wsOpenedAt;
+      // code 1000 ("normal closure") more than a few seconds in is Google
+      // ending the session cleanly (the beta's short session cap, most
+      // likely) rather than a real connection failure — show a friendly
+      // wrap-up instead of the raw technical detail in that case. Anything
+      // else (or a suspiciously instant "clean" close, which usually means
+      // the connection was rejected outright) still shows the real detail,
+      // since that's genuinely useful for tracking down a setup problem.
+      const normalEnd = e.code === 1000 && ms > 3000;
+      if(normalEnd) liveShowSessionEnded();
+      else liveShowError(
+        'Live Voice WebSocket closed. Code ' + e.code + (e.reason ? (' — ' + e.reason) : ' (Google sent no reason text)') +
+        '. Closed ' + ms + 'ms after connecting' +
+        (ms < 1500 ? ' — this fast usually means Google rejected the connection itself (bad token/endpoint/model), not a mid-call drop.' : '.')
+      );
+      liveStop();
+    };
+  }catch(e){
+    liveShowError('Could not start Live Voice — check microphone permission and try again.');
+    liveStop();
+  }finally{
+    LIVE_CONNECTING = false;
+  }
+}
+
+// Streams mic audio to Gemini Live as 16kHz 16-bit PCM, resampled from
+// whatever rate the browser's mic actually gives us (usually 48kHz).
+// Uses ScriptProcessorNode (deprecated but dependency-free and universally
+// supported) rather than an AudioWorklet module, since this is a beta test,
+// not the production path — worth revisiting if Tier 2 ships for real.
+function liveStartMic(){
+  const src = LIVE_AUDIO_CTX.createMediaStreamSource(LIVE_MIC_STREAM);
+  LIVE_MIC_NODE = LIVE_AUDIO_CTX.createScriptProcessor(4096, 1, 1);
+  const inRate = LIVE_AUDIO_CTX.sampleRate;
+  LIVE_MIC_NODE.onaudioprocess = (e) => {
+    if(!LIVE_WS || LIVE_WS.readyState !== WebSocket.OPEN) return;
+    const down = liveDownsample(e.inputBuffer.getChannelData(0), inRate, 16000);
+    const pcm16 = liveFloatToPCM16(down);
+    LIVE_WS.send(JSON.stringify({ realtimeInput: { audio: { mimeType: 'audio/pcm;rate=16000', data: liveArrayBufferToBase64(pcm16.buffer) } } }));
+  };
+  // the processor node must reach .destination to keep firing in some
+  // browsers, but routed through a silent gain so the student never hears
+  // their own raw mic input echoed back
+  const silentGain = LIVE_AUDIO_CTX.createGain();
+  silentGain.gain.value = 0;
+  src.connect(LIVE_MIC_NODE);
+  LIVE_MIC_NODE.connect(silentGain);
+  silentGain.connect(LIVE_AUDIO_CTX.destination);
+}
+function liveDownsample(buf, inRate, outRate){
+  if(outRate === inRate) return buf;
+  const ratio = inRate / outRate;
+  const out = new Float32Array(Math.round(buf.length / ratio));
+  for(let i=0;i<out.length;i++) out[i] = buf[Math.min(buf.length-1, Math.round(i*ratio))];
+  return out;
+}
+function liveFloatToPCM16(float32){
+  const out = new Int16Array(float32.length);
+  for(let i=0;i<float32.length;i++){ const s = Math.max(-1, Math.min(1, float32[i])); out[i] = s<0 ? s*0x8000 : s*0x7FFF; }
+  return out;
+}
+function liveArrayBufferToBase64(buf){
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+// Gemini Live streams response audio as 24kHz 16-bit PCM chunks; queue each
+// one back-to-back on the same clock so playback doesn't stutter/overlap.
+function livePlayPCM(base64){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  const pcm16 = new Int16Array(bytes.buffer);
+  const float32 = new Float32Array(pcm16.length);
+  for(let i=0;i<pcm16.length;i++) float32[i] = pcm16[i] / 0x8000;
+  const outRate = 24000;
+  const buffer = LIVE_AUDIO_CTX.createBuffer(1, float32.length, outRate);
+  buffer.copyToChannel(float32, 0);
+  const src = LIVE_AUDIO_CTX.createBufferSource();
+  src.buffer = buffer;
+  src.connect(LIVE_AUDIO_CTX.destination);
+  const startAt = Math.max(LIVE_AUDIO_CTX.currentTime, LIVE_PLAY_TIME);
+  src.start(startAt);
+  LIVE_PLAY_TIME = startAt + buffer.duration;
+}
+function liveStop(){
+  if(LIVE_MIC_NODE){ try{ LIVE_MIC_NODE.disconnect(); }catch(e){} LIVE_MIC_NODE = null; }
+  if(LIVE_MIC_STREAM){ LIVE_MIC_STREAM.getTracks().forEach(t=>t.stop()); LIVE_MIC_STREAM = null; }
+  if(LIVE_WS){ try{ LIVE_WS.close(); }catch(e){} LIVE_WS = null; }
+  if(LIVE_AUDIO_CTX){ try{ LIVE_AUDIO_CTX.close(); }catch(e){} LIVE_AUDIO_CTX = null; }
+  LIVE_CUR_BUBBLE = null; LIVE_CUR_ROLE = null;
+  liveSetStatus('Not connected');
+  const startBtn = document.getElementById('liveStartBtn'), stopBtn = document.getElementById('liveStopBtn');
+  if(startBtn) startBtn.style.display = '';
+  if(stopBtn) stopBtn.style.display = 'none';
+}
+
+/* ============================================================
+   LET'S TALK / LET'S PRACTISE — inline per-question TYPED answers, added
+   directly onto the step that already lists the lesson's own discussion
+   questions (see talkQuestionHtml() above). Answer is scored by
+   /api/speak-chat (mode:'score'), 0-10 on content/grammar/vocabulary, and
+   the score+feedback is logged server-side so the teacher can see it.
+   (Voice recording used to be offered here too, one mic button per
+   question — removed so recording only happens in ONE place, the
+   dedicated Practice Speaking modes ("On your own" / "Talk with AI",
+   see practiceCtaSlides()), instead of a mic + privacy notice repeated on
+   every question screen. This used to be a separate "Speaking Homework"
+   step asking the same questions again — now it's answered once, here.)
+   ============================================================ */
+let TALK_RESULTS = {};   // index -> { transcript, score, max, feedback } (typed/AI questions, survives Back/Next)
+let TALK_CHOICES = {};   // index -> { picked, correct }                 (multiple-choice questions)
+let TALK_CHOICE_BUSY = {};
+let TALK_DRAFTS = {};    // index -> typed-but-not-yet-scored text (see talkQuestionHtml()/lessonResultsSlide())
+
+function talkQuestionsFor(){
+  return (LESSON.type==='flashcards' ? LESSON.practise : LESSON.discussion) || [];
+}
+function talkIsChoice(i){
+  const q = talkQuestionsFor()[i];
+  return !!(q && typeof q === 'object' && Array.isArray(q.options));
+}
+/* Only the current slide's own choice buttons actually exist in the DOM
+   at once (each Let's Talk/Let's Practise question is its own slide),
+   but — same as compRepaint() — it's simplest to just try repainting
+   every index and let the DOM lookups for ones not on screen quietly
+   find nothing. Re-paints a question's picked answer if it was already
+   answered earlier (TALK_CHOICES lives outside the slide DOM, so it
+   survives the slide body being fully regenerated — Back/Next, or a
+   Korean-toggle rebuild). Typed answers have nothing to repaint here
+   anymore — see talkScoreAnswer()/lessonResultsSlide(). */
+function talkRepaintAllChoices(){
+  talkQuestionsFor().forEach((_,i)=>{
+    if(!talkIsChoice(i)) return;
+    const c = TALK_CHOICES[i];
+    if(c) talkShowChoiceResult(i, c.picked, c.correct);
+  });
+}
+
+// Scores one Let's Talk / Let's Practise typed answer — called from the
+// Results slide (lessonResultsSlide()) for every TALK_DRAFTS entry not
+// yet in TALK_RESULTS, once per lesson instead of per-question. No
+// per-question DOM to update anymore (that UI was removed along with
+// the Send button) — just the network call and the shared result state
+// lessonRepaintResults() reads from.
+async function talkScoreAnswer(i, transcript){
+  transcript = (transcript||'').trim();
+  if(!transcript || TALK_RESULTS[i]) return;
+  const question = talkQuestionsFor()[i];
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    const isFlashcards = LESSON.type === 'flashcards';
+    const ctx = {
+      title: LESSON.title,
+      topic: LESSON.kicker || '',
+      vocab: isFlashcards ? (LESSON.cards||[]).map(c=>({ w:c.word })) : (LESSON.vocab||[]),
+      discussion: (isFlashcards ? (LESSON.practise||[]) : (LESSON.discussion||[])).map(talkQText)
+    };
+    const r = await fetch('/api/speak-chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ mode:'score', lessonId: LESSON.id, context: ctx, question, transcript })
+    });
+    const j = await r.json();
+    if(!r.ok) return;
+    TALK_RESULTS[i] = { transcript, score: j.score, max: j.max || 10, feedback: j.feedback || '' };
+    if(LESSON) dlProgressTouch(LESSON.id, 'talk');
+  }catch(e){}
+}
+/* Multiple-choice Let's Talk / Let's Practise (lessons upgraded via
+   upgrade-discussion.html): graded instantly, client-side, no AI call —
+   same pattern as Comprehension's compChoosePick(). A correct pick passes
+   and locks the buttons; a wrong pick marks that button red and lets the
+   student try another, with the same "3 failed attempts auto-reveals" gate
+   fallback as everywhere else, here revealing by highlighting the correct
+   option (no separate written explanation — the question was never a
+   personal-opinion one to begin with once it's multiple choice). */
+async function talkChoosePick(i, oi){
+  if(TALK_CHOICE_BUSY[i]) return;
+  const q = talkQuestionsFor()[i];
+  if(!q || typeof q !== 'object' || !Array.isArray(q.options)) return;
+  TALK_CHOICE_BUSY[i] = true;
+  const correct = oi === q.correct;
+  TALK_CHOICES[i] = { picked: oi, correct };
+  talkShowChoiceResult(i, oi, correct);
+  if(LESSON) dlProgressTouch(LESSON.id, 'talk');
+  // 'speaking' (not 'talk') so this lands in the same teacher/student
+  // dashboard bucket as the typed/AI-scored flow's submissions rows (see
+  // api/speak-chat.js, which logs activity:"speaking" for Let's Talk) —
+  // the dashboard queries specifically filter activity=in.(speaking,comprehension).
+  if(LESSON && window.DLGames) DLGames.submit(LESSON.id, 'speaking', correct?10:0, 10);
+  const g = await dlGateAttempt('talk', i, correct, null);
+  if(g.neededHelp && !correct){
+    TALK_CHOICES[i] = { picked: q.correct, correct: true, revealed: true };
+    talkShowChoiceResult(i, q.correct, true);
+  }
+  TALK_CHOICE_BUSY[i] = false;
+}
+function talkShowChoiceResult(i, pickedIndex, correct){
+  const wrap = document.getElementById('talkChoices'+i);
+  if(!wrap) return;
+  const buttons = wrap.querySelectorAll('.comp-choice');
+  buttons.forEach((b,oi)=>{
+    b.classList.remove('picked','correct','wrong');
+    if(oi===pickedIndex) b.classList.add(correct ? 'correct' : 'wrong');
+  });
+  if(correct) buttons.forEach(b=> b.disabled = true);
+}
+/* Fills the lesson's one Results slide (pushed by lessonResultsSlide()),
+   every time it's shown — called from go(). Two passes:
+     1. Score anything drafted-but-not-yet-sent (COMP_DRAFTS/TALK_DRAFTS
+        typed answers, from the Send-button-free Comprehension/Let's Talk
+        question screens) — one batch of parallel calls instead of the
+        old per-question Send. An empty/untouched draft just stays
+        unscored (counts the same as "missing", same as always).
+     2. Render the score breakdown — comprehension/scramble/talk, each
+        multiple-choice-picked or AI-scored, tallied onto the same 0-10-
+        per-question scale (see the per-section comments below). This
+        used to live behind a "Show my lesson score" sidebar button,
+        clickable from every step — now it's just here, once, at the end. */
+async function lessonRepaintResults(){
+  const el = document.getElementById('lessonResultsBody');
+  if(!el) return;
+  el.innerHTML = `<div class="scoring-indicator" data-i18n="practice.hwScoring">${esc(dlT('practice.hwScoring'))}</div>`;
+
+  const jobs = [];
+  compQuestionsFor().forEach((_,i)=>{
+    if(!compIsChoice(i) && COMP_DRAFTS[i] && COMP_DRAFTS[i].trim() && !COMP_RESULTS[i]) jobs.push(compScoreAnswer(i, COMP_DRAFTS[i].trim()));
+  });
+  talkQuestionsFor().forEach((_,i)=>{
+    if(!talkIsChoice(i) && TALK_DRAFTS[i] && TALK_DRAFTS[i].trim() && !TALK_RESULTS[i]) jobs.push(talkScoreAnswer(i, TALK_DRAFTS[i].trim()));
+  });
+  if(jobs.length) await Promise.all(jobs);
+
+  const parts = [];
+  let sum = 0, max = 0;
+
+  const compQs = compQuestionsFor();
+  if(compQs.length){
+    let s = 0, missing = 0;
+    // multiple-choice questions (COMP_CHOICES) count as 10/0 correct/wrong
+    // so they add up on the same 0-10-per-question scale as the AI-scored
+    // ones (COMP_RESULTS) — see compQuestionHtml()'s two question shapes.
+    compQs.forEach((q, i) => {
+      if(compIsChoice(i)){
+        const c = COMP_CHOICES[i];
+        if(c) s += c.correct ? 10 : 0; else missing++;
+      } else {
+        const r = COMP_RESULTS[i]; if(r) s += (r.score||0); else missing++;
+      }
+    });
+    const m = compQs.length * 10;
+    sum += s; max += m;
+    parts.push({ label: dlT('lesson.stepComprehension'), sum: s, max: m, missing });
+  }
+
+  if(SCRAM_TOTAL){
+    let s = 0, missing = 0;
+    for(let i = 0; i < SCRAM_TOTAL; i++){ if(SCRAM_CORRECT[i]) s++; else missing++; }
+    sum += s; max += SCRAM_TOTAL;
+    parts.push({ label: dlT('lesson.stepWordScramble'), sum: s, max: SCRAM_TOTAL, missing });
+  }
+
+  const talkQs = talkQuestionsFor();
+  if(talkQs.length){
+    let s = 0, missing = 0;
+    talkQs.forEach((_, i) => {
+      if(talkIsChoice(i)){
+        const c = TALK_CHOICES[i];
+        if(c) s += c.correct ? 10 : 0; else missing++;
+      } else {
+        const r = TALK_RESULTS[i]; if(r) s += (r.score||0); else missing++;
+      }
+    });
+    const m = talkQs.length * 10;
+    sum += s; max += m;
+    parts.push({ label: dlT('lesson.stepLetsTalk'), sum: s, max: m, missing });
+  }
+
+  if(!max){ el.innerHTML = `<div class="lesson-score-total">${esc(dlT('practice.lessonScoreNone'))}</div>`; return; }
+  const pct = Math.round((sum/max)*100);
+  const breakdown = parts.map(p =>
+    esc(p.label)+': '+p.sum+'/'+p.max+(p.missing ? ' ('+p.missing+' '+esc(dlT('practice.lessonScoreMissing'))+')' : '')
+  ).join(' · ');
+  el.innerHTML = `<div class="lesson-score-total">${sum} / ${max} (${pct}%)</div><div class="lesson-score-breakdown">${breakdown}</div>`;
+  // Persist the final tally so it durably exists in the database (not
+  // just this page load) and can be read back on a teacher-facing view —
+  // see dlSaveLessonScore(). Fine to re-save every time this slide is
+  // shown (Back/Next revisits) — it's an upsert, always the latest tally.
+  if(LESSON) dlSaveLessonScore(LESSON.id, { sum, max, pct, parts });
+}
+
+/* ============================================================
+   COMPREHENSION — written answers, AI-scored (mode:'written' on
+   /api/speak-chat, same shape as Let's Talk's mode:'score' but written-
+   aware: spelling/grammar are fair to comment on, and the model answer is
+   sent along so the AI checks the CONTENT against it rather than judging
+   the student's own phrasing). Logged server-side as activity:'comprehension'
+   so the score also shows up on the teacher/student dashboards, same as
+   speaking. COMP_RESULTS lives outside the slide DOM so answers already
+   scored earlier survive Back/Next within this page load — see
+   compRepaint(), called from go() whenever the Comprehension step is shown.
+   ============================================================ */
+let COMP_RESULTS = {};   // index -> { answer, score, max, feedback }  (typed/AI questions)
+let COMP_CHOICES = {};   // index -> { picked, correct, revealed }     (multiple-choice questions)
+let COMP_CHOICE_BUSY = {};
+let COMP_DRAFTS = {};    // index -> typed-but-not-yet-scored text (see compQuestionHtml()/lessonResultsSlide())
+
+function compQuestionsFor(){ return LESSON.comprehension || []; }
+function compAnswersFor(){ return LESSON.compAnswers || []; }
+function compIsChoice(i){
+  const q = compQuestionsFor()[i];
+  return !!(q && typeof q === 'object' && Array.isArray(q.options));
+}
+
+function compRepaint(){
+  compQuestionsFor().forEach((_,i)=>{
+    if(!compIsChoice(i)) return;
+    const c = COMP_CHOICES[i];
+    if(c) compShowChoiceResult(i, c.picked, c.correct);
+  });
+}
+
+/* Multiple-choice Comprehension: graded instantly, client-side, no AI call.
+   A correct pick passes and locks the buttons; a wrong pick just marks
+   that button red and lets the student try another — same "3 failed
+   attempts auto-reveals" fallback as everywhere else (see dlGateAttempt()),
+   here revealing by highlighting the correct option. */
+async function compChoosePick(i, oi){
+  if(COMP_CHOICE_BUSY[i]) return;
+  const q = compQuestionsFor()[i];
+  if(!q || typeof q !== 'object' || !Array.isArray(q.options)) return;
+  COMP_CHOICE_BUSY[i] = true;
+  const correct = oi === q.correct;
+  COMP_CHOICES[i] = { picked: oi, correct };
+  compShowChoiceResult(i, oi, correct);
+  if(LESSON) dlProgressTouch(LESSON.id, 'comprehension');
+  // teacher-visible score log — same 0-10 scale and "one row per attempt"
+  // pattern the typed/AI-scored flow already writes via /api/speak-chat,
+  // just via the generic score-submit endpoint since there's no AI call
+  // here to piggyback the log onto (see games.js's submitScore(), already
+  // used the same way by Word Scramble/Games).
+  if(LESSON && window.DLGames) DLGames.submit(LESSON.id, 'comprehension', correct?10:0, 10);
+  const g = await dlGateAttempt('comprehension', i, correct, null);
+  if(g.neededHelp && !correct){
+    COMP_CHOICES[i] = { picked: q.correct, correct: true, revealed: true };
+    compShowChoiceResult(i, q.correct, true, true);
+  }
+  COMP_CHOICE_BUSY[i] = false;
+}
+function compShowChoiceResult(i, pickedIndex, correct){
+  const wrap = document.getElementById('compChoices'+i);
+  if(!wrap) return;
+  const buttons = wrap.querySelectorAll('.comp-choice');
+  buttons.forEach((b,oi)=>{
+    b.classList.remove('picked','correct','wrong');
+    if(oi===pickedIndex) b.classList.add(correct ? 'correct' : 'wrong');
+  });
+  if(correct) buttons.forEach(b=> b.disabled = true);
+  const explain = document.getElementById('compExplain'+i);
+  if(explain && explain.textContent) explain.style.display = 'block';
+}
+
+// Scores one Comprehension typed answer — called from the Results slide
+// (lessonResultsSlide()) for every COMP_DRAFTS entry not yet in
+// COMP_RESULTS, once per lesson instead of per-question. No per-question
+// DOM to update anymore (that UI was removed along with the Send
+// button) — just the network call and the shared result state that
+// lessonRepaintResults()/compRepaint() read from.
+async function compScoreAnswer(i, answer){
+  if(!answer || COMP_RESULTS[i]) return;
+  const question = compQuestionsFor()[i];
+  const modelAnswer = compAnswersFor()[i] || '';
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    const r = await fetch('/api/speak-chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ mode:'written', lessonId: LESSON.id, question, modelAnswer, answer, index:i })
+    });
+    const j = await r.json();
+    if(!r.ok) return;
+    COMP_RESULTS[i] = { answer, score: j.score, max: j.max || 10, feedback: j.feedback || '' };
+    if(LESSON) dlProgressTouch(LESSON.id, 'comprehension');
+  }catch(e){}
+}
+
+/* ============================================================
+   WHOLE-SESSION RECORDING — a reusable engine, first built as an add-on
+   to Step 8 ("On your own"): instead of stopping for AI feedback after
+   every item, record continuously through a whole stretch of content
+   and ask /api/speak-chat (mode:'session') for ONE overall completion/
+   effort score + encouraging feedback at the end — closer to how the
+   KakaoTalk voice-memo homework already worked (one recording, sent
+   once) than a turn-by-turn flow. Optional and additive wherever it's
+   used: existing Listen / local self-check controls are untouched.
+
+   createSessionRecorder(cfg) drives one instance of this against a set
+   of DOM ids + an "expected items" getter, so the SAME engine (continuous
+   SpeechRecognition, auto-restart through silence-timeout drops, and
+   pausing itself while the lesson's own TTS is playing so the mic
+   doesn't hear it) can be reused anywhere there's a target script to
+   compare speech against — today that's Step 8's word/sentence queue
+   and the Read the Article step; more steps can reuse it the same way.
+
+   cfg: { resultId, scoreTextId, feedbackTextId, scoringId,
+     errorId, micNoteId, recordLabelKey, finishLabelKey,
+     getExpectedItems(), getContext(), getItemsAttempted()?,
+     onStart()?, onStop()? }
+   ============================================================ */
+// shared floating stop button (one at a time — only one recorder is
+// ever active) so a student can always reach "Finish" even after
+// scrolling past the inline record button, e.g. deep into a long article
+function showFloatingRecBtn(label, onClick, active){
+  const btn = document.getElementById('floatingRecBtn');
+  if(!btn) return;
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+  btn.onclick = onClick;
+  btn.classList.toggle('on', !!active);
+  btn.style.display = 'flex';
+  // the full descriptive text (e.g. "Record my whole practice") stays in
+  // aria-label/title for screen readers and hover; the visible word on
+  // the button itself is kept short on purpose so it can't wrap/overflow
+  // on a narrow phone screen.
+  const lbl = document.getElementById('floatingRecBtnLabel');
+  if(lbl) lbl.textContent = dlT(active ? 'practice.recBtnStop' : 'practice.recBtnRecord');
+}
+function hideFloatingRecBtn(){
+  const btn = document.getElementById('floatingRecBtn');
+  if(btn) btn.style.display = 'none';
+}
+
+function createSessionRecorder(cfg){
+  let active = false, recog = null, suppressRestart = false;
+  let transcript = [], startTime = null, ttsWatch = null;
+  // A browser can claim to support SpeechRecognition (constructor exists)
+  // while the underlying speech service never actually answers — Brave
+  // blocks it by default, which surfaces as a 'network' error. Without
+  // this, the onend restart below just retries forever with the floating
+  // button stuck on "Finish" and no feedback, which is exactly what a
+  // teacher reported. 3 consecutive network errors is a real signal (a
+  // working browser doesn't throw this repeatedly); a single 'no-speech'
+  // timeout during a normal pause is not touched by this at all.
+  let networkFailCount = 0;
+
+  function micSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+  // The floating button (#floatingRecBtn) is the ONLY record/finish control
+  // for this recorder — there is no separate inline button anymore (having
+  // both shown at once, one relabeling to "Finish" while the other also
+  // appeared, was the original bug report). checkMicSupport() shows it the
+  // moment this recorder's screen becomes current, already labeled to match
+  // whatever state (idle vs recording) this recorder is in.
+  function checkMicSupport(){
+    const note = document.getElementById(cfg.micNoteId);
+    const ok = micSupported();
+    if(note) note.style.display = ok ? 'none' : 'block';
+    if(ok) showFloatingRecBtn(dlT(active ? cfg.finishLabelKey : cfg.recordLabelKey), toggle, active);
+    else hideFloatingRecBtn();
+  }
+
+  // called by syncFloatingRecBtn() when this recorder's screen is no longer
+  // the one showing — only hides if we're not mid-recording (an active
+  // recording is force-stopped instead, which hides as part of that).
+  function hide(){
+    if(!active) hideFloatingRecBtn();
+  }
+
+  function toggle(){ if(active) finish(); else start(); }
+
+  function start(){
+    if(!micSupported()) return;
+    active = true; transcript = []; startTime = Date.now(); suppressRestart = false; networkFailCount = 0;
+    if(cfg.onStart) cfg.onStart();
+    document.getElementById(cfg.resultId).style.display = 'none';
+    document.getElementById(cfg.errorId).style.display = 'none';
+    showFloatingRecBtn(dlT(cfg.finishLabelKey), toggle, true);
+    recogStart();
+    startTtsWatch();
+  }
+
+  function recogStart(){
+    if(!active) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return;
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = (e) => {
+      let gotAny = false;
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        if(e.results[i].isFinal){
+          const t = e.results[i][0] && e.results[i][0].transcript;
+          if(t && t.trim()){ transcript.push(t.trim()); gotAny = true; }
+        }
+      }
+      if(gotAny) networkFailCount = 0;
+    };
+    rec.onerror = (e) => {
+      // permission denial is the only case worth stopping outright — a
+      // silence timeout, network blip, or "aborted" (we caused it, e.g.
+      // pausing for TTS) should just recover via onend's restart below
+      if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        active = false; recog = null;
+        showError(dlT('practice.micNeeded'));
+        hideFloatingRecBtn();
+        if(cfg.onStop) cfg.onStop();
+        return;
+      }
+      // 'network' is what Brave throws when it's blocked the speech
+      // service by default — give up after a few in a row instead of
+      // restarting forever with no feedback (the bug a teacher reported).
+      if(e.error === 'network'){
+        networkFailCount++;
+        if(networkFailCount >= 3){
+          active = false; recog = null;
+          showError(dlT('practice.micNotWorking'));
+          hideFloatingRecBtn();
+          if(cfg.onStop) cfg.onStop();
+        }
+      }
+    };
+    rec.onend = () => {
+      recog = null;
+      if(active && !suppressRestart) recogStart();
+    };
+    try{ rec.start(); recog = rec; }
+    catch(e){
+      // rec.start() can throw (e.g. an InvalidStateError from overlapping
+      // start/stop calls around a TTS pause) with no guarantee onend fires
+      // to trigger a retry — previously this just went silently dead for
+      // the rest of the recording. Retry shortly instead.
+      if(active && !suppressRestart) setTimeout(recogStart, 300);
+    }
+  }
+
+  // pause the recognizer while the browser is reading something aloud
+  // (speak()/speakNext() in render.js), so the mic doesn't hear the
+  // lesson's own playback and mistake it for the student's voice. Polls
+  // speechSynthesis.speaking rather than hooking render.js's utterance
+  // events directly, so this feature stays self-contained and doesn't
+  // touch the shared TTS code other pages/modes depend on.
+  function startTtsWatch(){
+    if(ttsWatch) return;
+    let wasSpeaking = false;
+    ttsWatch = setInterval(() => {
+      if(!active) return;
+      const speaking = ('speechSynthesis' in window) && window.speechSynthesis.speaking;
+      if(speaking && !wasSpeaking){
+        suppressRestart = true;
+        if(recog){ try{ recog.stop(); }catch(e){} }
+      } else if(!speaking && wasSpeaking){
+        suppressRestart = false;
+        recogStart();
+      }
+      wasSpeaking = speaking;
+    }, 250);
+  }
+  function stopTtsWatch(){
+    if(ttsWatch){ clearInterval(ttsWatch); ttsWatch = null; }
+  }
+
+  // recognition.stop() is asynchronous — a final result for whatever the
+  // student was just saying can still arrive via onresult shortly after
+  // stop() is called but before onend fires. finish() used to read
+  // `transcript` immediately after calling stop(), so a student's last
+  // sentence (or their only sentence, in a short recording) could be lost
+  // if they pressed Finish right after speaking — a real false "we didn't
+  // catch any speech" even though the mic worked fine. Wait briefly for
+  // onend (or a timeout, in case it never fires — see recogStart()'s own
+  // start() catch above for why that's a real possibility) before
+  // finish() looks at what was actually captured.
+  function stopRecogAndWaitForFinal(){
+    return new Promise(resolve => {
+      if(!recog){ resolve(); return; }
+      const r = recog;
+      let done = false;
+      const settle = () => { if(done) return; done = true; if(recog === r) recog = null; resolve(); };
+      r.onend = settle;
+      setTimeout(settle, 400);
+      try{ r.stop(); }catch(e){ settle(); }
+    });
+  }
+
+  async function finish(){
+    if(!active) return;
+    active = false; suppressRestart = true;
+    stopTtsWatch();
+    await stopRecogAndWaitForFinal();
+    // still on the same screen after Finish — leave the floating button up,
+    // just back in its idle "Record" state, rather than hiding it outright
+    if(micSupported()) showFloatingRecBtn(dlT(cfg.recordLabelKey), toggle, false);
+    else hideFloatingRecBtn();
+    if(cfg.onStop) cfg.onStop();
+
+    const full = transcript.join(' ').trim();
+    if(!full){ showError(dlT('practice.sessionNoSpeech')); return; }
+
+    document.getElementById(cfg.errorId).style.display = 'none';
+    const scoringEl = document.getElementById(cfg.scoringId);
+    scoringEl.style.display = 'flex';
+    // Scoring/result renders in its normal spot on the page, which can be
+    // far from wherever the student was scrolled to when they pressed the
+    // floating Record button — bring it into view instead of leaving them
+    // to notice/find it themselves. Same element holds the "Scoring…"
+    // state and then the score once resultId gets filled in, so one scroll
+    // covers both.
+    scoringEl.scrollIntoView({ behavior:'smooth', block:'center' });
+    try{
+      const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+      if(!token){ showError(dlT('practice.chatLoginNeeded')); return; }
+      const expectedItems = cfg.getExpectedItems();
+      const secondsSpent = Math.round((Date.now() - startTime) / 1000);
+      const itemsTotal = expectedItems.length;
+      const itemsAttempted = cfg.getItemsAttempted ? cfg.getItemsAttempted() : itemsTotal;
+      const r = await fetch('/api/speak-chat', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+        body: JSON.stringify({
+          mode:'session', lessonId: LESSON.id, context: cfg.getContext(),
+          expectedItems, transcript: full, secondsSpent, itemsAttempted, itemsTotal
+        })
+      });
+      const j = await r.json();
+      if(!r.ok){ showError(j.error || dlT('practice.chatError')); return; }
+      document.getElementById(cfg.resultId).style.display = 'block';
+      document.getElementById(cfg.scoreTextId).textContent = j.score+' / '+j.max;
+      document.getElementById(cfg.feedbackTextId).textContent = j.feedback;
+      if(cfg.progressStep && LESSON) dlProgressTouch(LESSON.id, cfg.progressStep);
+    }catch(e){
+      showError(dlT('practice.chatError'));
+    }finally{
+      document.getElementById(cfg.scoringId).style.display = 'none';
+    }
+  }
+
+  // stop WITHOUT scoring — used when the student navigates away entirely
+  // (leaving Practice Speaking, or switching to a different slide) rather
+  // than pressing Finish; matches how leaving already discards an
+  // in-progress local self-check recording elsewhere on this page
+  function forceStop(){
+    if(!active) return;
+    active = false; suppressRestart = true;
+    stopTtsWatch();
+    if(recog){ try{ recog.stop(); }catch(e){} recog = null; }
+    hideFloatingRecBtn();
+    if(cfg.onStop) cfg.onStop();
+  }
+
+  function showError(msg){
+    document.getElementById(cfg.scoringId).style.display = 'none';
+    const el = document.getElementById(cfg.errorId);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  return { toggle, checkMicSupport, hide, forceStop, finish, isActive: () => active };
+}
+
+// Step 3 (Read the Article) instance — records the student reading the
+// whole article aloud once, instead of per-word/sentence turns
+const articleRecorder = createSessionRecorder({
+  resultId:'artResult', scoreTextId:'artScoreText',
+  feedbackTextId:'artFeedbackText', scoringId:'artScoring', errorId:'artError',
+  micNoteId:'artMicNote', recordLabelKey:'practice.artRecord', finishLabelKey:'practice.sessionFinish',
+  getExpectedItems: () => (LESSON && LESSON.paras) ? speakSentences(stripTags(LESSON.paras.join(' '))).slice(0, 80) : [],
+  getContext: () => ({ title: LESSON.title, topic: LESSON.kicker || '' }),
+  progressStep: 'read'
+});
+
+// One floating button, one recorder at a time: only Read the Article uses
+// it now (the solo drill's own whole-session recorder was removed — it's
+// a plain listen-and-review screen). Called after every slide change and
+// every Present/PDF/Practice + submode switch.
+const SESSION_RECORDERS = { article: articleRecorder };
+function currentRecordingScreenKey(){
+  if(document.getElementById('presentView').style.display !== 'none' && SLIDES[CUR] && SLIDES[CUR].articleRecorder) return 'article';
+  return null;
+}
+function syncFloatingRecBtn(){
+  const key = currentRecordingScreenKey();
+  Object.keys(SESSION_RECORDERS).forEach(k=>{
+    const r = SESSION_RECORDERS[k];
+    if(k !== key){ if(r.isActive()) r.forceStop(); else r.hide(); }
+  });
+  if(key) SESSION_RECORDERS[key].checkMicSupport();
+}
+</script>
+</body>
+</html>

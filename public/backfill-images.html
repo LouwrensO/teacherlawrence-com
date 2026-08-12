@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backfilling Photos — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .twrap{max-width:640px;margin:60px auto;padding:0 20px;text-align:center;font-family:Helvetica,Arial,sans-serif;}
+  .twrap h1{font-family:'Arial Black',sans-serif;font-size:26px;margin-bottom:10px;color:var(--ink);}
+  .tbar{height:16px;border-radius:10px;background:var(--soft);overflow:hidden;margin:22px 0 10px;}
+  .tbar > div{height:100%;width:0%;background:var(--accent);transition:width .4s ease;}
+  #status{font-size:18px;font-weight:700;color:var(--ink);margin-top:8px;}
+  #detail{color:var(--muted);font-size:14px;margin-top:6px;min-height:20px;}
+  .tback{display:none;margin-top:22px;font-weight:700;color:var(--accent);}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+  </div></div>
+
+  <div class="twrap">
+    <h1>🖼️ Finding photos for every lesson…</h1>
+    <p style="color:var(--muted)">Leave this open. It finds one real photo per lesson from Unsplash and saves it, so the Library and Path show a photo instead of an emoji. This takes a second or two per lesson.</p>
+    <div class="tbar"><div id="bar"></div></div>
+    <div id="status">Starting…</div>
+    <div id="detail"></div>
+    <a id="backlink" class="tback" href="/">← All done — see the Library</a>
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const token = params.get('token') || '';
+let doneCount = 0;
+
+function setBar(done, remaining){
+  const total = done + remaining;
+  document.getElementById('bar').style.width = (total ? Math.round(done/total*100) : 100) + '%';
+}
+async function step(){
+  try{
+    const r = await fetch('/api/backfill-images?token=' + encodeURIComponent(token));
+    const j = await r.json();
+    if(j.error){
+      document.getElementById('status').textContent = '⚠️ ' + j.error;
+      document.getElementById('detail').textContent = 'Copy this and send it to Claude.';
+      return;
+    }
+    if(j.done){ doneCount++; document.getElementById('detail').textContent = (j.found?'Found a photo for: ':'No photo found for: ') + j.done; }
+    const remaining = (typeof j.remaining === 'number') ? j.remaining : 0;
+    setBar(doneCount, remaining);
+    if(remaining > 0){
+      document.getElementById('status').textContent = 'Done ' + doneCount + ' · ' + remaining + ' to go';
+      setTimeout(step, 400);
+    }else{
+      document.getElementById('status').textContent = '✅ All done! ' + doneCount + ' lessons processed.';
+      document.getElementById('detail').textContent = '';
+      document.getElementById('backlink').style.display = 'inline-block';
+    }
+  }catch(e){
+    document.getElementById('status').textContent = 'Network hiccup — retrying…';
+    setTimeout(step, 1500);
+  }
+}
+if(!token){ document.getElementById('status').textContent = 'Add your token: /backfill-images.html?token=YOUR_TOKEN'; }
+else step();
+</script>
+</body>
+</html>

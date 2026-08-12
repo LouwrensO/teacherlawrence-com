@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Lawrence — Learn English at Home, 5 Minutes a Day</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Home "how it works" band — parents & adult learners */
+  .hiw{max-width:1000px;margin:6px auto 0;padding:8px 20px 4px}
+  .hiw h2{text-align:center;font-size:clamp(20px,3vw,26px);font-weight:800;margin:0 0 20px}
+  .hiw-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .hiw-step{border:1px solid rgba(120,130,150,.2);border-radius:16px;padding:20px 18px;background:var(--card,#fff);
+    box-shadow:0 6px 18px rgba(30,40,90,.05);text-align:center}
+  .hiw-num{width:38px;height:38px;margin:0 auto 12px;border-radius:50%;background:var(--accent,#5b6ef0);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+  .hiw-step h3{margin:0 0 6px;font-size:17px;font-weight:800}
+  .hiw-step p{margin:0;font-size:14.5px;line-height:1.5;color:var(--muted,#556)}
+  .hiw-note{max-width:720px;margin:20px auto 4px;text-align:center;font-size:15.5px;line-height:1.6;color:var(--muted,#445)}
+  @media(max-width:640px){.hiw-steps{grid-template-columns:1fr}}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+</head>
+<body>
+
+  <!-- top nav. Library/Path/Practice/Games are hidden for a logged-out
+       visitor (see the script below) so the homepage reads as one simple
+       call to action — sign up — rather than a menu of things to explore
+       before ever creating an account. Once logged in, the full nav
+       returns. -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <span id="fullNavLinks">
+      <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+      <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+      <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+      <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    </span>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+    <a class="nav-link cta" id="createOwnLink" href="/create" data-i18n="nav.createOwn">Create your own</a>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script src="token.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+  <script>
+  // A guest (no stored auth token) sees just the language toggle, Log in,
+  // and a Sign up CTA — Library/Path/Practice/Games and "Create your own"
+  // stay hidden until there's an account. dlReadToken() is synchronous
+  // (reads localStorage), so this runs before first paint with no flash of
+  // the full nav.
+  if(typeof dlReadToken !== 'function' || !dlReadToken()){
+    const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
+    const cta = document.getElementById('createOwnLink');
+    if(cta){ cta.href = '/login?mode=signup'; cta.textContent = dlT('nav.signUp'); cta.setAttribute('data-i18n','nav.signUp'); }
+  }
+  </script>
+
+  <!-- hero — Lawrence (the teacher behind this site) as guide: the visitor's
+       problem (scared to speak English) comes first, then who's helping,
+       then the one simple daily plan, then the call to action. -->
+  <div class="hero"><div class="hero-inner">
+    <h1 data-i18n="home.title">Scared to speak English?</h1>
+    <p data-i18n="home.subtitle">I'm Lawrence — I've taught English for 15 years, and I've seen it again and again: the students who use English every single day are the ones who become fluent. Sign up free, pick your level, and practice just five minutes a day. That's the whole plan, and it works.</p>
+    <a class="nav-link cta" id="heroCta" href="/login?mode=signup" data-i18n="home.heroCta" style="display:inline-block;margin-top:6px;">Sign up free →</a>
+    <p style="font-size:13px;color:var(--muted);margin-top:10px;" data-i18n="home.heroCtaSub">Takes 30 seconds. No credit card needed.</p>
+  </div></div>
+  <script>
+  // Signed-in visitors don't need the hero's sign-up push again — let the
+  // "Continue where you left off" plan strip (renderActivePlan(), below)
+  // be the one call to action for them instead.
+  if(typeof dlReadToken === 'function' && dlReadToken()){
+    const hc = document.getElementById('heroCta'); if(hc) hc.style.display='none';
+  }
+  </script>
+
+  <!-- how it works (parents & adult learners) -->
+  <div class="hiw">
+    <h2 data-i18n="home.howTitle">How it works</h2>
+    <div class="hiw-steps">
+      <div class="hiw-step">
+        <div class="hiw-num">1</div>
+        <h3 data-i18n="home.step1Title">Pick your level</h3>
+        <p data-i18n="home.step1Body">From first words all the way to advanced reading — start wherever you are.</p>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-num">2</div>
+        <h3 data-i18n="home.step2Title">Open the lesson</h3>
+        <p data-i18n="home.step2Body">One tap opens it in your browser — reading, vocabulary, comprehension and word puzzles, all done online.</p>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-num">3</div>
+        <h3 data-i18n="home.step3Title">Five minutes a day</h3>
+        <p data-i18n="home.step3Body">Do a little every day. That's the whole secret — small, steady, and it works.</p>
+      </div>
+    </div>
+    <p class="hiw-note" data-i18n="home.audienceLine">For your children or for yourself — complete beginners welcome. Every lesson comes with an answer key, so a parent can check it together with their child.</p>
+    <p class="hiw-note" style="font-size:14px;opacity:.85" data-i18n="home.printNote">Everything works online, on any phone, tablet or computer — and if you prefer paper, you can print any lesson too.</p>
+  </div>
+
+  <div class="active-plan" id="activePlan" style="display:none;"></div>
+
+  <!-- library -->
+  <div class="lib">
+    <div class="filter-row">
+      <span class="filter-label" data-i18n="home.levelLabel">Level</span>
+      <span id="levelChips"></span>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label" data-i18n="home.topicLabel">Topic</span>
+      <span id="topicChips"></span>
+      <a href="#" id="bibleToggle" onclick="toggleBiblePref();return false;" style="display:none;font-size:13px;color:var(--muted);margin-left:8px;"></a>
+    </div>
+    <div class="search-box">
+      <input type="text" id="search" data-i18n-placeholder="home.searchPlaceholder" placeholder="Search lessons by title or topic…" oninput="render()">
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="no-results" id="noResults" style="display:none;"><span data-i18n="home.noResults">No lessons match your search yet. Try another word, or</span> <a href="/create" style="color:var(--accent);font-weight:700;" data-i18n="home.createOwnLink">create your own</a>.</div>
+  </div>
+
+<script src="lessons.js"></script>
+<script>
+let FILTER='all', TOPIC='all', SHOW_BIBLE=true;
+// build the level + topic chip rows from the data
+function buildChips(){
+  const lvl = document.getElementById('levelChips');
+  lvl.innerHTML = `<button class="chip on" data-lvl="all" onclick="setFilter('all')">All</button>` +
+    LEVELS.map(l=>`<button class="chip" data-lvl="${l.key}" onclick="setFilter('${l.key}')">${l.label}</button>`).join('');
+  const top = document.getElementById('topicChips');
+  // "Bible" is a free, always-visible topic by default — the chip only
+  // disappears for someone who has explicitly hidden it (see
+  // checkBiblePref/toggleBiblePref below).
+  const topics = SHOW_BIBLE ? TOPICS.concat([BIBLE_TOPIC]) : TOPICS;
+  top.innerHTML = `<button class="chip on" data-top="all" onclick="setTopic('all')">All</button>` +
+    topics.map(t=>`<button class="chip" data-top="${t}" onclick="setTopic('${t}')">${t===BIBLE_TOPIC?'🙏 '+t:t}</button>`).join('');
+}
+function setFilter(l){
+  FILTER=l;
+  document.querySelectorAll('#levelChips .chip').forEach(b=>b.classList.toggle('on',b.dataset.lvl===l));
+  render();
+}
+function setTopic(t){
+  TOPIC=t;
+  document.querySelectorAll('#topicChips .chip').forEach(b=>b.classList.toggle('on',b.dataset.top===t));
+  render();
+}
+function levelLabel(key){ const lv=LEVELS.find(l=>l.key===key); return lv?lv.tag:key; }
+function render(){
+  const q = (document.getElementById('search').value||'').toLowerCase().trim();
+  const grid = document.getElementById('grid');
+  const list = LESSONS.filter(L=>{
+    if(FILTER!=='all' && L.level!==FILTER) return false;
+    // Private "Create Your Own" lessons never appear in the shared Library
+    // — defense in depth alongside the server-side RLS policy that's
+    // already supposed to keep them out of this unauthenticated fetch.
+    if(L.visibility==='private') return false;
+    // Bible lessons are visible to everyone by default — hidden only for
+    // someone who has explicitly turned that off (see checkBiblePref()).
+    if(!SHOW_BIBLE && topicOf(L)===BIBLE_TOPIC) return false;
+    if(TOPIC!=='all' && topicOf(L)!==TOPIC) return false;
+    if(q){
+      const hay = (L.title+' '+L.category+' '+L.summary).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  // show lessons grouped by level order (beginner → advanced)
+  const order = LEVELS.map(l=>l.key);
+  list.sort((a,b)=> order.indexOf(a.level) - order.indexOf(b.level));
+  grid.innerHTML = list.map(L=>`
+    <a class="card lvl-${L.level}" href="lesson?id=${encodeURIComponent(L.id)}">
+      <div class="card-top">${L.image?`<img loading="lazy" src="${esc(L.image)}" alt="">`:(L.icon||'📄')}</div>
+      <div class="card-body">
+        <div class="card-cat">${esc(L.category||'Reading')}</div>
+        <h3>${esc(L.title)}</h3>
+        <div class="summary">${esc(L.summary||'')}</div>
+        <span class="lvl-pill">${esc(levelLabel(L.level))}</span>
+      </div>
+    </a>`).join('');
+  document.getElementById('noResults').style.display = list.length?'none':'block';
+}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+buildChips();
+render();                              // show static lessons instantly
+// then try the database; if it returns lessons, use those (keeps site
+// working even if the DB is empty or unreachable)
+fetch('/api/lessons')
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(data => { if (Array.isArray(data) && data.length) { LESSONS = data; render(); } })
+  .catch(() => {})
+  .finally(() => renderActivePlan());
+
+// Bible topic is visible to everyone by default (logged in or out) and
+// free regardless of subscription — see public/lesson.html's
+// dlDetermineAccess(). A signed-in user can turn it off for their own
+// account (see api/access.js's hideBibleTopic field); logged-out visitors
+// always see it, with no toggle to turn off (nothing to persist it to).
+function renderBibleToggle(){
+  const el = document.getElementById('bibleToggle');
+  if(!el) return;
+  el.style.display = 'inline';
+  el.textContent = SHOW_BIBLE ? '✝️ Hide Bible lessons' : '🙏 Show Bible lessons';
+}
+async function toggleBiblePref(){
+  const token = typeof dlReadToken === 'function' ? dlReadToken() : null;
+  if(!token) return;
+  const next = !SHOW_BIBLE;
+  try{
+    await fetch('/api/save-profile', {
+      method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token},
+      body: JSON.stringify({ hideBibleTopic: !next })
+    });
+  }catch(e){}
+  SHOW_BIBLE = next;
+  if(!SHOW_BIBLE && TOPIC===BIBLE_TOPIC) TOPIC='all';
+  buildChips(); render(); renderBibleToggle();
+}
+async function checkBiblePref(){
+  try{
+    if(typeof dlCheckAccess !== 'function') return;
+    const acc = await dlCheckAccess();
+    if(!acc || !acc.loggedIn) return;   // toggle stays hidden for logged-out visitors (Bible stays visible, just no way to hide it without an account)
+    if(acc.hideBibleTopic){ SHOW_BIBLE = false; buildChips(); render(); }
+    renderBibleToggle();
+  }catch(e){}
+}
+checkBiblePref();
+
+/* "Active Lessons" — the up-to-5 lessons a teacher set as live for this
+   student (see teacher.html's Active Lessons panel). Signed-out or independent
+   (non-class) students just never have a plan, so the strip stays hidden. */
+async function renderActivePlan(){
+  if(typeof dlReadToken !== 'function') return;
+  const token = dlReadToken();
+  if(!token) return;
+  let planIds = [];
+  try{
+    const r = await fetch('/api/save-profile?myPlan=1', { headers:{ Authorization:'Bearer '+token } });
+    if(r.ok){ const j = await r.json(); planIds = j.plan || []; }
+  }catch(e){ return; }
+  if(!planIds.length) return;
+  const items = planIds.map(id => LESSONS.find(x=>x.id===id)).filter(Boolean);
+  if(!items.length) return;
+  const box = document.getElementById('activePlan');
+  box.innerHTML = `<div class="active-plan-h">📋 Active Lessons — picked for you</div>
+    <div class="active-plan-row">${items.map(L=>`
+      <a class="active-plan-card" href="lesson?id=${encodeURIComponent(L.id)}">
+        <span class="apc-icon">${L.image?`<img loading="lazy" src="${esc(L.image)}" alt="">`:(L.icon||'📄')}</span>
+        <span class="apc-title">${esc(L.title)}</span>
+      </a>`).join('')}</div>`;
+  box.style.display = 'block';
+}
+</script>
+</body>
+</html>

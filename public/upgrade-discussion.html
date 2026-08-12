@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retired — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .twrap{max-width:640px;margin:60px auto;padding:0 20px;text-align:center;font-family:Helvetica,Arial,sans-serif;}
+  .twrap h1{font-family:'Arial Black',sans-serif;font-size:26px;margin-bottom:10px;color:var(--ink);}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+  </div></div>
+
+  <!-- RETIRED. This used to rewrite every existing lesson's Let's Talk
+       (discussion) / Let's Practise (practise) questions into multiple
+       choice. That's no longer what the app wants — Let's Talk is meant
+       to stay open-ended, free discussion (see api/generate.js's and
+       api/make.js's discussion prompt, and public/lesson.html's
+       talkQuestionHtml() doc-comment). The backing endpoint
+       (api/make.js's upgradeDiscussionOne()) now just returns a 410 and
+       does nothing, so this page no longer calls it at all. Comprehension's
+       equivalent tool, upgrade-comprehension.html, is UNCHANGED and still
+       works — comprehension is still meant to be multiple-choice. -->
+  <div class="twrap">
+    <h1>🚫 Retired</h1>
+    <p style="color:var(--muted)">This tool used to convert Let's Talk / Let's Practise questions into multiple choice. Let's Talk is meant to stay open, free discussion now, so this tool has been retired and no longer does anything.</p>
+  </div>
+</body>
+</html>

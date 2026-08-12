@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My classes — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .tch{max-width:900px;margin:30px auto 60px;padding:0 18px;font-family:Helvetica,Arial,sans-serif;}
+  .tch h1{font-family:'Arial Black',sans-serif;font-size:26px;color:var(--ink);margin-bottom:4px;}
+  .tch .sub{color:var(--muted);margin-bottom:20px;font-size:14px;}
+  .tch .msg{color:var(--muted);padding:40px 0;text-align:center;}
+  .tch .crumbs{font-size:13px;color:var(--muted);margin-bottom:14px;}
+  .tch .crumbs a{color:var(--accent);cursor:pointer;font-weight:700;text-decoration:none;}
+  .class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .class-card{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:18px;cursor:pointer;
+    transition:transform .1s,box-shadow .1s;box-shadow:0 6px 16px rgba(30,40,90,.05);}
+  .class-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(30,40,90,.09);}
+  .class-card h3{font-size:18px;margin:0 0 10px;color:var(--ink);}
+  .class-card .meta{font-size:13px;color:var(--muted);display:flex;gap:14px;}
+  .class-card .code{margin-top:12px;font-family:'Arial Black',sans-serif;letter-spacing:3px;color:var(--accent);font-size:18px;}
+  .add-card{border:2px dashed var(--grid);background:transparent;border-radius:14px;padding:18px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:800;font-size:15px;min-height:120px;}
+  .add-card:hover{border-color:var(--accent);background:var(--soft);}
+  .share{background:var(--soft);border:1px solid var(--rule);border-radius:14px;padding:16px 18px;margin-bottom:20px;}
+  .share .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .share .code{font-family:'Arial Black',sans-serif;font-size:26px;letter-spacing:5px;color:var(--accent);}
+  .share .lnk{font-size:13px;color:var(--muted);word-break:break-all;flex:1;min-width:180px;}
+  .share button{font-size:13px;font-weight:700;padding:8px 14px;border-radius:20px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .tbl-wrap{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:14px;}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px;}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--rule);white-space:nowrap;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:#fafbfc;}
+  tbody tr{cursor:pointer;} tr:last-child td{border-bottom:none;}
+  tbody tr:hover td{background:#fafbff;}
+  .name-cell b{color:var(--ink);} .name-cell small{color:var(--muted);display:block;font-size:12px;}
+  .tiles{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 20px;}
+  .tile{flex:1;min-width:120px;background:#fff;border:1px solid var(--rule);border-radius:14px;padding:16px 18px;}
+  .tile .n{font-family:'Arial Black',sans-serif;font-size:28px;color:var(--ink);line-height:1;}
+  .tile .t{font-size:12px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+  .cal{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
+  .cal .d{width:22px;height:22px;border-radius:6px;background:#eceef3;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);}
+  .cal .d.on{background:var(--accent);color:#fff;}
+  .empty-note{color:var(--muted);font-size:14px;padding:24px 0;text-align:center;}
+  .add-student-row{margin-bottom:16px;}
+  .add-student-btn{font-size:13px;font-weight:700;padding:9px 16px;border-radius:20px;border:1px dashed var(--accent);
+    background:transparent;color:var(--accent);cursor:pointer;}
+  .add-student-card{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:18px;margin-bottom:16px;max-width:360px;}
+  .add-student-card label{display:block;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:10px 0 5px;}
+  .add-student-card input,.add-student-card select{width:100%;font-size:15px;padding:10px;border-radius:10px;border:1px solid var(--grid);background:#fff;}
+  .add-student-actions{display:flex;gap:8px;margin-top:14px;}
+  .add-student-actions button{font-size:13px;font-weight:700;padding:9px 16px;border-radius:20px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .add-student-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .add-student-card .msg{margin-top:10px;font-size:13px;color:var(--muted);}
+  .manage-row{display:flex;gap:10px;}
+  .manage-row button{font-size:13px;font-weight:700;padding:8px 14px;border-radius:18px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .manage-row button.danger{color:#c0392b;border-color:#e6b8b2;}
+  .hw-list{margin-bottom:22px;}
+  .hw-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;
+    border:1px solid var(--rule);border-radius:12px;padding:12px 16px;margin-bottom:8px;text-decoration:none;
+    color:var(--ink);flex-wrap:wrap;}
+  .hw-row:hover{border-color:var(--accent);}
+  .hw-row-title{font-weight:700;}
+  .hw-row-done{font-size:12px;font-weight:700;color:var(--muted);}
+  .hw-row-scores{display:flex;gap:6px;flex-wrap:wrap;}
+  .hw-row-none{font-size:12px;color:var(--muted);}
+  .hw-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--soft);color:var(--accent);}
+  .hw-pill-total{background:var(--accent);color:#fff;}
+  .plan-box{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:16px 18px;margin-bottom:22px;}
+  .plan-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:6px;}
+  @media(max-width:640px){.plan-cols{grid-template-columns:1fr;}}
+  .plan-lvl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .plan-lvl-tab{font-size:12px;font-weight:700;padding:6px 12px;border-radius:14px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .plan-lvl-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .plan-level-list{max-height:260px;overflow-y:auto;border:1px solid var(--rule);border-radius:10px;padding:4px;}
+  .plan-col-h{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:10px 0 6px;}
+  .plan-col-h:first-child{margin-top:0;}
+  .plan-col input{width:100%;font-size:14px;padding:9px 10px;border-radius:10px;border:1px solid var(--grid);background:#fff;margin-bottom:8px;}
+  .plan-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:13px;}
+  .plan-row:hover{background:var(--soft);}
+  .plan-row.sel{background:var(--soft);}
+  .plan-check{width:20px;height:20px;border-radius:6px;border:1px solid var(--grid);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--accent);flex-shrink:0;}
+  .plan-row.sel .plan-check{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .plan-icon{width:22px;text-align:center;flex-shrink:0;}
+  .plan-icon img{width:22px;height:22px;object-fit:cover;border-radius:5px;}
+  .plan-title{flex:1;}
+  .plan-lvl{font-size:10px;color:var(--muted);text-transform:uppercase;}
+  .plan-empty{font-size:13px;color:var(--muted);padding:6px 10px;}
+  .plan-actions{display:flex;align-items:center;gap:12px;margin-top:14px;}
+  .plan-actions button{font-size:13px;font-weight:700;padding:10px 18px;border-radius:20px;border:none;background:var(--accent);color:#fff;cursor:pointer;}
+  .plan-actions button:disabled{opacity:.5;cursor:default;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script src="token.js"></script>
+  <script type="module" src="account.js"></script>
+  <script src="lessons.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="tch">
+    <div id="body"><div class="msg" data-i18n="teacher.loading">Loading…</div></div>
+  </div>
+
+<script>
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function headers(){ return { 'Content-Type':'application/json', Authorization:'Bearer '+dlReadToken() }; }
+  function fmtTime(sec){
+    if(!sec) return '—';
+    const m = Math.round(sec/60);
+    if(m < 60) return m + ' min';
+    const h = Math.floor(m/60), r = m%60; return h + ' hr' + (r? ' '+r+' min':'');
+  }
+  function fmtDate(d){ return d ? new Date(d+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}) : 'never'; }
+  const body = () => document.getElementById('body');
+
+  async function api(qs){
+    const r = await fetch('/api/save-profile?'+qs, { headers: headers() });
+    if(!r.ok) throw new Error('load failed'); return r.json();
+  }
+
+  let LESSON_META = null;
+  async function lessonMeta(){
+    if(LESSON_META) return LESSON_META;
+    let list = [];
+    try { const cached = sessionStorage.getItem('dl_lessons_meta'); if(cached) list = JSON.parse(cached); } catch(e){}
+    if(!list.length){ try{ const r = await fetch('/api/lessons?meta=1'); if(r.ok){ list = await r.json(); sessionStorage.setItem('dl_lessons_meta', JSON.stringify(list)); } }catch(e){} }
+    const byId = {}; list.forEach(L => byId[L.id]=L);
+    LESSON_META = byId; return byId;
+  }
+  const ACTIVITY_LABEL = { memory:'🧠 Memory', scramble:'🔤 Scramble', match:'🎯 Match', speaking:'🎙 Speaking', comprehension:'✍️ Writing' };
+
+  /* ---------- classes list ---------- */
+  async function showClasses(){
+    body().innerHTML = '<div class="msg">Loading…</div>';
+    let data;
+    try { data = await api('classes=1'); }
+    catch(e){ body().innerHTML = '<div class="msg">Please log in as a teacher to see your classes.</div>'; return; }
+    const cls = data.classes || [];
+    body().innerHTML =
+      `<h1>My classes</h1>
+       <p class="sub">Create a class, share its code, and your students join for free. Then track their homework and progress.</p>
+       <div class="class-grid">` +
+        cls.map(c => `<div class="class-card" onclick="showClass('${c.id}')">
+            <h3>${esc(c.name)}</h3>
+            <div class="meta"><span>👩‍🎓 ${c.students} student${c.students===1?'':'s'}</span><span>📕 ${c.assignments} assigned</span></div>
+            <div class="code">${esc(c.code)}</div>
+          </div>`).join('') +
+        `<div class="add-card" onclick="createClass()">+ New class</div>
+       </div>`;
+  }
+
+  async function createClass(){
+    const name = prompt('Name this class (e.g. "Monday 4pm — Beginners"):');
+    if(name===null) return;
+    const nm = name.trim();
+    if(!nm) return;
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ createClass:{ name: nm } }) });
+      const j = await r.json();
+      if(!r.ok){ alert(j.error || 'Could not create the class.'); return; }
+      showClasses();
+    }catch(e){ alert('Could not create the class.'); }
+  }
+
+  /* ---------- add a student directly (username + PIN, no email) ---------- */
+  function showAddStudent(classId){
+    const box = document.getElementById('addStudentForm');
+    const levelOpts = (typeof LEVELS !== 'undefined' && LEVELS.length)
+      ? LEVELS.map(l=>`<option value="${l.key}">${esc(l.label||l.key)}</option>`).join('')
+      : '<option value="beginner">Beginner</option>';
+    box.innerHTML =
+      `<div class="add-student-card">
+         <label>Student's name</label>
+         <input type="text" id="asName" maxlength="40" autocomplete="off">
+         <label>Username</label>
+         <input type="text" id="asUser" autocapitalize="none" autocomplete="off" placeholder="minjun2017">
+         <label>PIN</label>
+         <input type="text" id="asPin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="1234">
+         <label>Starting level</label>
+         <select id="asLevel">${levelOpts}</select>
+         <div class="add-student-actions">
+           <button class="primary" onclick="submitAddStudent('${classId}')">Add student</button>
+           <button onclick="document.getElementById('addStudentForm').innerHTML=''">Cancel</button>
+         </div>
+         <div class="msg" id="asMsg"></div>
+       </div>`;
+  }
+  async function submitAddStudent(classId){
+    const name = document.getElementById('asName').value.trim();
+    const username = document.getElementById('asUser').value.trim().toLowerCase();
+    const pin = document.getElementById('asPin').value.trim();
+    const level = document.getElementById('asLevel').value;
+    const msg = document.getElementById('asMsg');
+    if(!name || !username || !pin){ msg.textContent = 'Please fill in name, username and PIN.'; return; }
+    msg.textContent = 'Adding…';
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ createClassStudent:{ classId, name, username, pin, level } }) });
+      const j = await r.json();
+      if(!r.ok){ msg.textContent = j.error || 'Could not add student.'; return; }
+      document.getElementById('addStudentForm').innerHTML = '';
+      showClass(classId);
+    }catch(e){ msg.textContent = 'Could not add student.'; }
+  }
+
+  /* ---------- one class: students + share code ---------- */
+  let CURRENT_CLASS = null;
+  async function showClass(id){
+    CURRENT_CLASS = id;
+    body().innerHTML = '<div class="msg">Loading…</div>';
+    let data;
+    try { data = await api('classId='+encodeURIComponent(id)); }
+    catch(e){ body().innerHTML = '<div class="msg">Could not load that class.</div>'; return; }
+    const c = data.class, students = data.students || [], assignments = data.assignments || [];
+    const link = location.origin + '/join?code=' + encodeURIComponent(c.code);
+    const meta = await lessonMeta();
+    let classPlanData = { plan: [] };
+    try { classPlanData = await api('classPlan='+encodeURIComponent(id)); } catch(e){}
+    body().innerHTML =
+      `<div class="crumbs"><a onclick="showClasses()">← My classes</a></div>
+       <h1>${esc(c.name)}</h1>
+       <div class="share"><div class="row">
+         <span class="code">${esc(c.code)}</span>
+         <span class="lnk" id="joinLink">${esc(link)}</span>
+         <button onclick="copyText('${esc(link)}', this)">Copy link</button>
+       </div>
+       <p class="sub" style="margin:10px 0 0">Share this code or link. Students tap it, sign up, and they're in your class — free.</p>
+       </div>
+       <div class="add-student-row">
+         <button class="add-student-btn" onclick="showAddStudent('${id}')">+ Add a student directly (username + PIN, no email needed)</button>
+       </div>
+       <div id="addStudentForm"></div>` +
+      (assignments.length ? `
+       <p class="sub" style="margin-bottom:8px;font-weight:700;color:var(--ink);">📕 Assigned homework</p>
+       <div class="hw-list">${assignments.map(a => {
+         const L = meta[a.lessonId] || {};
+         return `<a class="hw-row" href="/lesson?id=${encodeURIComponent(a.lessonId)}">
+             <span class="hw-row-title">${esc(L.title||a.lessonId)}</span>
+             <span class="hw-row-done">${a.done}/${a.total} started</span>
+           </a>`;
+       }).join('')}</div>` : '') +
+      planSectionHtml('class', classPlanData, meta) +
+      (students.length
+        ? `<div class="tbl-wrap"><table>
+            <thead><tr><th>Student</th><th>Practice time</th><th>Streak</th><th>Lessons</th><th>Last active</th></tr></thead>
+            <tbody>${students.map(s => `<tr onclick="showStudent('${s.id}')">
+              <td class="name-cell"><b>${esc(s.name)}</b>${s.level?`<small>${esc(s.level)}</small>`:''}</td>
+              <td>${fmtTime(s.totalSeconds)}</td>
+              <td>${s.streak>0?('🔥 '+s.streak):'—'}</td>
+              <td>${s.lessons||'—'}</td>
+              <td>${fmtDate(s.lastActive)}</td>
+            </tr>`).join('')}</tbody>
+          </table></div>`
+        : `<div class="empty-note">No students yet. Share the code above and they'll appear here as they join.</div>`);
+    PLAN_MODE = 'class';
+    PLAN_TARGET = id;
+    PLAN_STUDENT_LEVEL = '';
+    PLAN_RECENT = [];
+    PLAN_SELECTED = new Set(classPlanData.plan || []);
+    PLAN_LEVEL_TAB = (typeof LEVELS !== 'undefined' && LEVELS[0]) ? LEVELS[0].key : '';
+    refreshAllPlanLists();
+  }
+
+  /* a quick "this week" glance above the full speaking log — count and
+     average score over the last 7 days, computed client-side from the
+     same speakingLog rows already fetched (no extra request). Returns
+     '' (nothing rendered) when there's no activity this week, so it
+     doesn't show an empty/zero card for a student who hasn't practiced
+     recently but has older history further down the list. */
+  function speakingWeekSummaryHtml(log){
+    if(!log || !log.length) return '';
+    const since = Date.now() - 7*24*60*60*1000;
+    const week = log.filter(e => e.created && new Date(e.created).getTime() >= since);
+    if(!week.length) return '';
+    const avg = week.reduce((sum,e)=> sum + (e.score||0), 0) / week.length;
+    return `<div class="tiles" style="margin-bottom:14px;">
+        <div class="tile"><div class="n">${week.length}</div><div class="t">This week</div></div>
+        <div class="tile"><div class="n">${(Math.round(avg*10)/10)} / 10</div><div class="t">Avg score</div></div>
+      </div>`;
+  }
+
+  /* ---------- one student ---------- */
+  async function showStudent(id){
+    body().innerHTML = '<div class="msg">Loading…</div>';
+    let data;
+    try { data = await api('student='+encodeURIComponent(id)); }
+    catch(e){ body().innerHTML = '<div class="msg">Could not load that student.</div>'; return; }
+    let planData = { lastLesson:null, recentLessonIds:[], plan:[] };
+    try { planData = await api('plan='+encodeURIComponent(id)); } catch(e){}
+    // Speaking Homework isn't assignment-scoped (available any lesson, any
+    // time — see api/speak-chat.js's mode:'score'), so it's a separate,
+    // chronological log rather than folded into the assignment-based
+    // `homework` list below.
+    let speakingLog = [];
+    try { const sl = await api('speakingLog='+encodeURIComponent(id)); speakingLog = sl.log || []; } catch(e){}
+    const s = data.student, days = data.days || [], homework = data.homework || [];
+    // last 14 days practice calendar
+    const secByDay = {}; days.forEach(d => { secByDay[d.day] = d.seconds||0; });
+    const cal = [];
+    for(let i=13;i>=0;i--){
+      const dt = new Date(); dt.setDate(dt.getDate()-i);
+      const key = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      cal.push({ key, on: (secByDay[key]||0) > 0, label: dt.getDate() });
+    }
+    const meta = await lessonMeta();
+    body().innerHTML =
+      `<div class="crumbs"><a onclick="showClasses()">My classes</a> › <a onclick="showClass('${CURRENT_CLASS}')">class</a></div>
+       <h1>${esc(s.name)}</h1>
+       <p class="sub">${s.level?esc(s.level)+' · ':''}${s.username?'@'+esc(s.username):''}</p>
+       <div class="tiles">
+         <div class="tile"><div class="n">${fmtTime(s.totalSeconds)}</div><div class="t">Practice time</div></div>
+         <div class="tile"><div class="n">${s.streak>0?('🔥 '+s.streak):'0'}</div><div class="t">Day streak</div></div>
+         <div class="tile"><div class="n">${s.lessons||0}</div><div class="t">Lessons practiced</div></div>
+       </div>
+       <p class="sub" style="margin-bottom:4px">Last 14 days</p>
+       <div class="cal">${cal.map(d=>`<div class="d ${d.on?'on':''}" title="${d.key}">${d.label}</div>`).join('')}</div>
+       <p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">📕 Homework</p>` +
+      (homework.length
+        ? `<div class="hw-list">${homework.map(a => {
+            const L = meta[a.lessonId] || {};
+            const scores = a.submissions.map(sub => `<span class="hw-pill">${ACTIVITY_LABEL[sub.activity]||sub.activity}: ${sub.score}/${sub.max}</span>`).join('');
+            const total = a.total ? `<span class="hw-pill hw-pill-total">Total: ${a.total.sum}/${a.total.max}</span>` : '';
+            return `<a class="hw-row" href="/lesson?id=${encodeURIComponent(a.lessonId)}">
+                <span class="hw-row-title">${esc(L.title||a.lessonId)}</span>
+                <span class="hw-row-scores">${scores}${total || (scores?'':'<span class="hw-row-none">not started</span>')}</span>
+              </a>`;
+          }).join('')}</div>`
+        : `<div class="empty-note">No homework assigned yet.</div>`) +
+      `<p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">🎙 Speaking &amp; ✍️ Writing practice</p>` +
+      speakingWeekSummaryHtml(speakingLog) +
+      (speakingLog.length
+        ? `<div class="hw-list">${speakingLog.map(e => {
+            const L = meta[e.lessonId] || {};
+            return `<a class="hw-row" href="/lesson?id=${encodeURIComponent(e.lessonId||'')}">
+                <span class="hw-row-title">${esc(L.title||e.lessonId||'')} <span class="hw-pill">${ACTIVITY_LABEL[e.activity]||'🎙 Speaking'}: ${e.score}/${e.max}</span></span>
+                <span class="hw-row-scores" style="flex-basis:100%;color:var(--muted);font-size:13px;font-weight:400;">${esc(e.feedback||'')} · ${fmtDate((e.created||'').slice(0,10))}</span>
+              </a>`;
+          }).join('')}</div>`
+        : `<div class="empty-note">No speaking or writing homework yet.</div>`) +
+      planSectionHtml('student', planData, meta) +
+      (s.directLogin
+        ? `<p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">🔑 Login</p>
+           <div class="manage-row">
+             <button onclick="resetStudentPin('${s.id}')">Reset PIN</button>
+             <button class="danger" onclick="removeStudent('${s.id}','${esc(s.name)}')">Remove student</button>
+           </div>`
+        : '');
+    PLAN_MODE = 'student';
+    PLAN_TARGET = id;
+    PLAN_STUDENT_LEVEL = s.level || '';
+    PLAN_RECENT = planData.recentLessonIds || [];
+    PLAN_SELECTED = new Set(planData.plan || []);
+    PLAN_LEVEL_TAB = s.level || ((typeof LEVELS !== 'undefined' && LEVELS[0]) ? LEVELS[0].key : '');
+    refreshAllPlanLists();
+  }
+
+  /* ---------- active lessons: pick up to 5 lessons live for a student, or
+     as a class-wide default for whoever hasn't joined yet / has no personal
+     plan of their own -------------------------------------------------- */
+  let PLAN_MODE = 'student', PLAN_TARGET = null, PLAN_STUDENT_LEVEL = '', PLAN_RECENT = [], PLAN_SELECTED = new Set(), PLAN_LEVEL_TAB = '';
+
+  function planSectionHtml(mode, planData, meta){
+    const last = planData.lastLesson;
+    const lastTitle = last ? esc((meta[last.lessonId]||{}).title || last.lessonId) : null;
+    const lastWhen = last ? fmtDate((last.updated||'').slice(0,10)) : null;
+    const topNote = mode === 'class'
+      ? `<p class="sub" style="margin:0 0 4px;">These are the default active lessons for anyone who joins this class. Once a student has joined, you can plan lessons just for them from their own page — that overrides this default.</p>`
+      : `<p class="sub" style="margin:0 0 4px;">${last ? `Last lesson: <b>${lastTitle}</b> · ${esc(lastWhen)}` : 'No lessons yet.'}</p>` +
+        (planData.inherited ? `<p class="sub" style="margin:0 0 10px;color:var(--accent);">Currently using the class's default plan — saving here sets lessons just for this student.</p>` : '');
+    const recommendedBlock = mode === 'student'
+      ? `<div class="plan-col-h">🤖 Suggested next</div><div id="planRecommended"></div>`
+      : '';
+    return `
+      <p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">📋 Active lessons</p>
+      <div class="plan-box">
+        ${topNote}
+        <div class="plan-cols">
+          <div class="plan-col">
+            ${recommendedBlock}
+            <div class="plan-col-h">📚 Browse by level</div>
+            <div class="plan-lvl-tabs" id="planLevelTabs"></div>
+            <div id="planLevelLessons" class="plan-level-list"></div>
+          </div>
+          <div class="plan-col">
+            <div class="plan-col-h">🔍 Add any lesson</div>
+            <input type="text" id="planSearch" placeholder="Search lessons…" oninput="renderPlanSearch()">
+            <div id="planSearchResults"></div>
+            <div class="plan-col-h">✅ Selected</div>
+            <div id="planSelected"></div>
+          </div>
+        </div>
+        <div class="plan-actions">
+          <button id="planSaveBtn" onclick="savePlan()">Set active lessons (<span id="planCount">0</span>/5)</button>
+          <span class="msg" id="planMsg"></span>
+        </div>
+      </div>`;
+  }
+
+  function orderedLessonMeta(){
+    const meta = LESSON_META || {};
+    const order = (typeof LEVELS !== 'undefined' ? LEVELS : []).map(l=>l.key);
+    return Object.values(meta)
+      .filter(x => !x.custom)
+      .sort((a,b)=> (order.indexOf(a.level)-order.indexOf(b.level)) || ((a.seq??999)-(b.seq??999)) || (String(a.title)>String(b.title)?1:-1));
+  }
+  function recommendedLessons(){
+    const order = (typeof LEVELS !== 'undefined' ? LEVELS : []).map(l=>l.key);
+    const startIdx = Math.max(0, order.indexOf(PLAN_STUDENT_LEVEL));
+    const seen = new Set(PLAN_RECENT);
+    return orderedLessonMeta()
+      .filter(x => order.indexOf(x.level) >= startIdx && !seen.has(x.id))
+      .slice(0, 8);
+  }
+  function planRow(id){
+    const L = (LESSON_META||{})[id] || {};
+    const sel = PLAN_SELECTED.has(id);
+    return `<div class="plan-row${sel?' sel':''}" onclick="togglePlanLesson('${id}')">
+      <span class="plan-check">${sel?'✓':'+'}</span>
+      <span class="plan-icon">${L.image?`<img loading="lazy" src="${esc(L.image)}" alt="">`:(L.icon||'📄')}</span>
+      <span class="plan-title">${esc(L.title||id)}</span>
+      ${L.level?`<span class="plan-lvl">${esc(L.level)}</span>`:''}
+    </div>`;
+  }
+  function renderPlanRecommended(){
+    const box = document.getElementById('planRecommended'); if(!box) return;
+    const rec = recommendedLessons();
+    box.innerHTML = rec.length ? rec.map(x=>planRow(x.id)).join('') : '<div class="plan-empty">No suggestions right now.</div>';
+  }
+  function renderPlanLevelTabs(){
+    const box = document.getElementById('planLevelTabs'); if(!box) return;
+    const levels = (typeof LEVELS !== 'undefined' ? LEVELS : []);
+    box.innerHTML = levels.map(l=>`<button type="button" class="plan-lvl-tab${PLAN_LEVEL_TAB===l.key?' on':''}" onclick="setPlanLevelTab('${l.key}')">${esc(l.label)}</button>`).join('');
+  }
+  function renderPlanLevelLessons(){
+    const box = document.getElementById('planLevelLessons'); if(!box) return;
+    const list = orderedLessonMeta().filter(x=>x.level===PLAN_LEVEL_TAB);
+    box.innerHTML = list.length ? list.map(x=>planRow(x.id)).join('') : '<div class="plan-empty">No lessons at this level yet.</div>';
+  }
+  function setPlanLevelTab(key){ PLAN_LEVEL_TAB = key; renderPlanLevelTabs(); renderPlanLevelLessons(); }
+  function renderPlanSearch(){
+    const box = document.getElementById('planSearchResults'); if(!box) return;
+    const q = (document.getElementById('planSearch').value||'').trim().toLowerCase();
+    if(!q){ box.innerHTML=''; return; }
+    const results = Object.values(LESSON_META||{}).filter(x=>!x.custom && (x.title||'').toLowerCase().includes(q)).slice(0,10);
+    box.innerHTML = results.length ? results.map(x=>planRow(x.id)).join('') : '<div class="plan-empty">No matches.</div>';
+  }
+  function renderPlanSelected(){
+    const box = document.getElementById('planSelected'); if(!box) return;
+    box.innerHTML = PLAN_SELECTED.size ? [...PLAN_SELECTED].map(id=>planRow(id)).join('') : '<div class="plan-empty">None yet — pick up to 5 above.</div>';
+    document.getElementById('planCount').textContent = PLAN_SELECTED.size;
+  }
+  function refreshAllPlanLists(){
+    if(PLAN_MODE==='student') renderPlanRecommended();
+    renderPlanLevelTabs(); renderPlanLevelLessons();
+    renderPlanSearch(); renderPlanSelected();
+  }
+  function togglePlanLesson(id){
+    if(PLAN_SELECTED.has(id)) PLAN_SELECTED.delete(id);
+    else {
+      if(PLAN_SELECTED.size>=5){ alert("You can set up to 5 active lessons at a time."); return; }
+      PLAN_SELECTED.add(id);
+    }
+    refreshAllPlanLists();
+  }
+  async function savePlan(){
+    const msg = document.getElementById('planMsg'), btn = document.getElementById('planSaveBtn');
+    msg.textContent = 'Saving…'; btn.disabled = true;
+    const payload = PLAN_MODE === 'class'
+      ? { setClassPlan: { classId: PLAN_TARGET, lessonIds: [...PLAN_SELECTED] } }
+      : { setStudentPlan: { studentId: PLAN_TARGET, lessonIds: [...PLAN_SELECTED] } };
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify(payload) });
+      const j = await r.json();
+      btn.disabled = false;
+      if(!r.ok){ msg.textContent = j.error || 'Could not save.'; return; }
+      msg.textContent = PLAN_MODE === 'class' ? 'Set as the class default ✓' : 'Live for the student now ✓';
+    }catch(e){ btn.disabled = false; msg.textContent = 'Could not save.'; }
+  }
+  window.renderPlanSearch = renderPlanSearch;
+  window.togglePlanLesson = togglePlanLesson;
+  window.savePlan = savePlan;
+  window.setPlanLevelTab = setPlanLevelTab;
+
+  async function resetStudentPin(id){
+    const pin = prompt('New PIN for this student (4–6 digits):');
+    if(pin===null) return;
+    const p = pin.trim();
+    if(!/^\d{4,6}$/.test(p)){ alert('PIN must be 4–6 digits.'); return; }
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ resetStudentPin:{ studentId:id, pin:p } }) });
+      const j = await r.json();
+      alert(r.ok ? 'PIN updated.' : (j.error||'Could not reset PIN.'));
+    }catch(e){ alert('Could not reset PIN.'); }
+  }
+  async function removeStudent(id, name){
+    if(!confirm('Remove '+name+'\'s login? This cannot be undone.')) return;
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ removeStudent:{ studentId:id } }) });
+      if(r.ok) showClass(CURRENT_CLASS); else alert('Could not remove student.');
+    }catch(e){ alert('Could not remove student.'); }
+  }
+
+  window.showClasses = showClasses; window.showClass = showClass; window.showStudent = showStudent; window.createClass = createClass;
+  window.copyText = (t, btn) => { if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>{ if(btn){ const o=btn.textContent; btn.textContent='Copied!'; setTimeout(()=>btn.textContent=o,1500); } }).catch(()=>{}); };
+
+  showClasses();
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reset password — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .auth{max-width:400px;margin:50px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;}
+  .auth h1{font-family:'Arial Black',sans-serif;font-size:26px;text-align:center;margin-bottom:6px;color:var(--ink);}
+  .auth p.sub{text-align:center;color:var(--muted);margin-bottom:22px;}
+  .auth label{display:block;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 0 6px;}
+  .auth input{width:100%;font-size:15px;padding:12px;border-radius:10px;border:1px solid var(--grid);background:#fff;}
+  .auth .pw-wrap{position:relative;}
+  .auth .pw-wrap input{padding-right:64px;}
+  .auth .pw-toggle{position:absolute;top:50%;right:8px;transform:translateY(-50%);background:none;border:none;padding:6px 8px;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;border-radius:8px;}
+  .auth .pw-toggle:hover{background:rgba(91,110,240,.1);}
+  .auth .go{width:100%;margin-top:18px;font-size:16px;font-weight:800;padding:14px;border-radius:26px;border:none;background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(91,110,240,.25);}
+  .auth .go:disabled{opacity:.6;cursor:wait;}
+  .auth .msg{margin-top:16px;text-align:center;font-size:14px;min-height:20px;}
+  .auth .msg.err{color:#c0392b;}
+  .auth .msg.ok{color:var(--accent2);}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="token.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="auth">
+    <h1 data-i18n="reset.title">Set a new password</h1>
+    <p class="sub" data-i18n="reset.subtitle">Choose a new password for your account.</p>
+    <label data-i18n="reset.newPassword">New password</label>
+    <div class="pw-wrap">
+      <input type="password" id="password" data-i18n-placeholder="login.passwordHint" placeholder="at least 6 characters" autocomplete="new-password">
+      <button type="button" class="pw-toggle" id="pwToggle" onclick="togglePassword()" aria-pressed="false" data-i18n-aria-label="login.showPassword" aria-label="Show password" data-i18n="login.show">Show</button>
+    </div>
+    <button class="go" id="goBtn" onclick="savePassword()" data-i18n="reset.save">Save password →</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+<script>
+  // Plain (non-module) helpers so the page UI works even if the Supabase
+  // CDN import below is slow or fails — same pattern as the login page.
+  window.setMsg = function (t, cls) {
+    const m = document.getElementById('msg'); m.textContent = t || ''; m.className = 'msg ' + (cls || '');
+  };
+  window.togglePassword = function () {
+    const inp = document.getElementById('password');
+    const btn = document.getElementById('pwToggle');
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', String(show));
+    btn.setAttribute('data-i18n', show ? 'login.hide' : 'login.show');
+    btn.setAttribute('data-i18n-aria-label', show ? 'login.hidePassword' : 'login.showPassword');
+    btn.textContent = dlT(show ? 'login.hide' : 'login.show');
+    btn.setAttribute('aria-label', dlT(show ? 'login.hidePassword' : 'login.showPassword'));
+    inp.focus();
+  };
+</script>
+<script type="module" src="account.js"></script>
+<script type="module">
+  import { supabase } from './account.js';
+
+  // Supabase (detectSessionInUrl is on by default) parses the recovery
+  // token from the URL hash on load and establishes a temporary session,
+  // firing PASSWORD_RECOVERY. Only allow saving once we actually have a
+  // session — otherwise this page was opened directly, not via the email
+  // link, and there's nothing to update.
+  let canSave = false;
+  const goBtn = document.getElementById('goBtn');
+
+  function enable(ok) {
+    canSave = ok;
+    if (!ok) { goBtn.disabled = true; setMsg(dlT('reset.needLink'), 'err'); }
+    else { goBtn.disabled = false; if (document.getElementById('msg').classList.contains('err')) setMsg(''); }
+  }
+  enable(false);
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || session) enable(true);
+  });
+  // Also check directly, in case the event fired before this listener
+  // attached (or the session was already present).
+  supabase.auth.getSession().then(({ data: { session } }) => { if (session) enable(true); });
+
+  window.savePassword = async () => {
+    if (!canSave) { setMsg(dlT('reset.needLink'), 'err'); return; }
+    const password = document.getElementById('password').value;
+    if (!password || password.length < 6) { setMsg(dlT('reset.tooShort'), 'err'); return; }
+    goBtn.disabled = true;
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      setMsg(dlT('reset.done'), 'ok');
+      setTimeout(() => { location.href = '/path'; }, 1200);
+    } catch (e) {
+      setMsg(e.message || 'Something went wrong.', 'err');
+      goBtn.disabled = false;
+    }
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice Speaking — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+</head>
+<body>
+  <!-- This page has no UI of its own: it works out which lesson the
+       student is currently on (the same "continue where you left off"
+       lesson the Path page shows) and sends them straight into that
+       lesson's Practice Speaking mode. It exists so a single "🎙 Practice"
+       nav link can start speaking from anywhere with one tap. -->
+  <div class="gate-loading" id="loading" data-i18n="practice.pickLesson">Loading your practice…</div>
+  <script src="i18n.js"></script>
+  <!-- static fallback list (only used if /api/lessons is unreachable) -->
+  <script src="lessons.js"></script>
+  <script>
+    (function(){
+      var el = document.getElementById('loading');
+      if (el && typeof dlT === 'function') el.textContent = dlT('practice.pickLesson');
+    })();
+  </script>
+  <script>
+  (async function(){
+    // level order mirrors the Path page / paywall gate
+    const LEVEL_ORDER = ["phonics","beginner","elementary","pre-int","intermediate","upper","advanced","super"];
+    // real per-lesson progress (see public/lesson.html's dlProgressTouch()
+    // and public/path.html's getProgressMap() — same key/shape, kept in
+    // sync so this page picks the same "next" lesson the Path page shows)
+    function getDone(){
+      try{
+        const key = 'dl_progress_'+(localStorage.getItem('dl_uid')||'guest');
+        let raw = localStorage.getItem(key);
+        if(raw==null){
+          const oldKey = 'dl_done_'+(localStorage.getItem('dl_uid')||'guest');
+          const legacy = localStorage.getItem(oldKey) || localStorage.getItem('dl_done');
+          const map = {};
+          if(legacy){ try{ JSON.parse(legacy).forEach(id=>{ map[id]={state:'done'}; }); }catch(e){} }
+          raw = JSON.stringify(map);
+        }
+        const map = JSON.parse(raw||'{}');
+        return new Set(Object.keys(map).filter(id=>map[id] && map[id].state==='done'));
+      }catch(e){ return new Set(); }
+    }
+
+    let list = [];
+    // reuse the meta list cached by the lesson gate when it's available
+    try {
+      const cached = sessionStorage.getItem('dl_lessons_meta');
+      if (cached) list = JSON.parse(cached);
+    } catch(e){}
+    if (!list.length) {
+      try {
+        const r = await fetch('/api/lessons?meta=1');
+        if (r.ok) { list = await r.json(); try{ sessionStorage.setItem('dl_lessons_meta', JSON.stringify(list)); }catch(_){} }
+      } catch(e){}
+    }
+    // fall back to the bundled static list if the API is unreachable
+    if (!list.length && window.LESSONS) list = window.LESSONS;
+
+    if (!list.length) { location.replace('/path'); return; }
+
+    list.sort((a,b)=>
+      (LEVEL_ORDER.indexOf(a.level)-LEVEL_ORDER.indexOf(b.level))
+      || ((a.seq??999)-(b.seq??999))
+      || (a.title>b.title?1:-1));
+
+    const done = getDone();
+    const startLevel = localStorage.getItem('dl_level') || '';
+    const startIdx = LEVEL_ORDER.indexOf(startLevel);
+    // first unfinished lesson at/after the chosen starting level, then any
+    // unfinished lesson, then just the very first lesson
+    const atOrAfter = list.filter(x => startIdx <= 0 ? true : LEVEL_ORDER.indexOf(x.level) >= startIdx);
+    const target = atOrAfter.find(x=>!done.has(x.id))
+      || list.find(x=>!done.has(x.id))
+      || list[0];
+
+    if (target && target.id) location.replace('lesson?id='+encodeURIComponent(target.id)+'&mode=practice');
+    else location.replace('/path');
+  })();
+  </script>
+</body>
+</html>

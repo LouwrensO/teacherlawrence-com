@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Started — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .ob{max-width:560px;margin:46px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;text-align:center;}
+  .ob h1{font-family:'Arial Black',sans-serif;font-size:28px;color:var(--ink);margin-bottom:8px;}
+  .ob p.sub{color:var(--muted);margin-bottom:26px;}
+  .ob .go{margin-top:8px;font-size:16px;font-weight:800;padding:13px 26px;border-radius:26px;border:none;background:var(--accent);color:#fff;cursor:pointer;}
+  .ob .invite-box{max-width:360px;margin:18px auto 0;text-align:left;}
+  .ob .invite-lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .ob .invite-inp{width:100%;font-size:16px;letter-spacing:2px;text-transform:uppercase;padding:12px;border-radius:10px;border:1px solid var(--grid);background:#fff;text-align:center;font-weight:700;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="token.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <!-- One screen: no role picker, no placement test — every new signup is
+       simply a learner who starts the locked path at their chosen level
+       (see public/path.html's dlCurrentPathLessonId()). A level picker IS
+       shown below (re-added — this used to say "no starting-level picker"
+       when every student started at lesson 1 of Phonics regardless; the
+       level can still be changed any time from /path, see switchLevel()
+       there). Existing teacher/class/homework features are untouched for
+       accounts that already have role='teacher'/'parent' — they just
+       aren't offered here anymore. (Mirrors how Duolingo keeps classroom
+       tools in a separate teacher-only product, invisible to the plain
+       sign-up flow — if a self-serve teacher signup is ever wanted again,
+       it belongs on its own page, not back in this one.) -->
+  <div class="ob" id="step1">
+    <h1 data-i18n="onboard.welcome">Welcome! 👋</h1>
+    <p class="sub" data-i18n="onboard.readyToStart">You're all set — let's start at lesson 1 and work through the path together.</p>
+    <p class="sub" style="margin-top:-14px;" data-i18n="onboard.whatLevel">What's your level?</p>
+    <div class="invite-box" id="levelPicker" style="text-align:center;">
+      <div id="levelPickerChips"></div>
+    </div>
+    <div class="invite-box">
+      <label class="invite-lbl" for="inviteCode" data-i18n="onboard.inviteCode">Have an invite code from your teacher? (optional)</label>
+      <input id="inviteCode" class="invite-inp" type="text" autocapitalize="characters" autocomplete="off" placeholder="ABC123" maxlength="6">
+    </div>
+    <button class="go" style="margin-top:18px;" onclick="pickStudent()" data-i18n="onboard.startLearning">Start learning →</button>
+  </div>
+
+<script src="lessons.js"></script>
+<script>
+// Level picker chips — same LEVELS list/keys path.html's switcher and
+// index.html's filter use, so whatever a student picks here lines up with
+// where they land on the locked path. No selection is required (a shy
+// "not sure yet" student can just hit Start learning) — pickStudent()
+// falls back to the very first level, same as it always has.
+let OB_LEVEL = null;
+function renderLevelPicker(){
+  document.getElementById('levelPickerChips').innerHTML = LEVELS.map(l =>
+    `<button type="button" class="chip${l.key===OB_LEVEL?' on':''}" style="margin:4px;" onclick="pickLevel('${l.key}')">${l.label}</button>`
+  ).join('');
+}
+function pickLevel(key){
+  OB_LEVEL = (OB_LEVEL === key) ? null : key;
+  renderLevelPicker();
+}
+renderLevelPicker();
+
+// if they arrived here mid-signup from somewhere specific (e.g. a lesson
+// paywall's "start free trial" button), send them back there once
+// onboarding is done instead of always dropping them on / or /path.
+function dlContinueAfterOnboard(fallback){
+  const next = localStorage.getItem('dl_next');
+  if(next) localStorage.removeItem('dl_next');
+  location.href = next || fallback;
+}
+// Remember role/level on the ACCOUNT (not just this browser), so logging
+// out and back in — even on another device — never re-asks a returning
+// user "teacher or student?". Best-effort: a logged-out guest browsing
+// before ever signing up has no token yet, and that's fine.
+function dlSaveProfile(role, level){
+  try {
+    const token = dlReadToken();
+    if (!token) return;
+    fetch('/api/save-profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ role, level: level || null })
+    }).catch(()=>{});
+  } catch (e) {}
+}
+// If the student typed a teacher's invite code, link them to that teacher.
+// keepalive so it still completes as we navigate away to the path page.
+function dlJoinTeacher(){
+  try{
+    const el = document.getElementById('inviteCode');
+    const code = el && el.value ? el.value.trim().toUpperCase() : '';
+    if(!code) return;
+    const token = dlReadToken();
+    if(!token) return;
+    fetch('/api/save-profile', {
+      method:'POST', keepalive:true,
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ join: code })
+    }).catch(()=>{});
+  }catch(e){}
+}
+// If they arrived via a class invite link, finish joining that class once
+// they've signed up (belt-and-suspenders alongside the /join round-trip).
+function dlJoinStoredClass(){
+  try{
+    const code = localStorage.getItem('dl_join_class');
+    if(!code) return;
+    const token = dlReadToken(); if(!token) return;
+    fetch('/api/save-profile', {
+      method:'POST', keepalive:true,
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ joinClass:{ code } })
+    }).then(()=>{ try{ localStorage.removeItem('dl_join_class'); }catch(e){} }).catch(()=>{});
+  }catch(e){}
+}
+// The only path through onboarding now: everyone becomes a learner on the
+// locked path, starting at lesson 1 of whichever level they picked above
+// (public/path.html's dlCurrentPathLessonId() picks the exact lesson; no
+// level picked just falls through to LEVELS[0], same as before this).
+function pickStudent(){
+  localStorage.setItem('dl_role','student');
+  if(OB_LEVEL) localStorage.setItem('dl_level', OB_LEVEL);
+  else localStorage.removeItem('dl_level');
+  dlSaveProfile('student', OB_LEVEL);
+  dlJoinTeacher();
+  dlJoinStoredClass();
+  dlContinueAfterOnboard('/path');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Create a Lesson — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+</head>
+<body>
+
+  <!-- top nav -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <a class="nav-link" href="/">← Library</a>
+    <a class="nav-link cta" href="/create">Create your own</a>
+  </div></div>
+
+  <div class="panel">
+    <div class="panel-inner">
+
+      <div class="field" id="topicField">
+        <label>① What should the lesson be about?</label>
+        <input type="text" id="topicInput" placeholder="Type anything — e.g. how octopuses dream">
+        <div class="mini-actions">
+          <button type="button" class="mini-btn" onclick="surpriseTopic()">✨ Surprise me</button>
+          <button type="button" class="mini-btn" onclick="togglePaste()" id="pasteToggle">📄 Paste an article instead</button>
+        </div>
+      </div>
+      <div class="field" id="pasteField" style="display:none;">
+        <label>Paste the article text</label>
+        <textarea id="pasteInput" placeholder="Paste a news or science article here..."></textarea>
+        <div class="mini-actions" id="pdfActions" style="display:none;">
+          <button type="button" class="mini-btn" onclick="document.getElementById('pdfFileInput').click()">📎 Or upload a PDF instead</button>
+          <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;" onchange="handlePdfSelected(this.files[0])">
+        </div>
+        <div id="pdfStatus" class="mode-note" style="display:none;"></div>
+      </div>
+
+      <div class="field">
+        <label>② Choose a level</label>
+        <div class="seg" id="levelSeg">
+          <button data-lvl="easy" onclick="setLvl('easy')">Beginner</button>
+          <button data-lvl="medium" class="on" onclick="setLvl('medium')">Intermediate</button>
+          <button data-lvl="hard" onclick="setLvl('hard')">Advanced</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;">
+          <input type="checkbox" id="privateToggle" style="width:auto;">
+          🔒 Keep this private (only visible to me)
+        </label>
+        <div class="mode-note">Off by default, custom lessons are visible in the shared Library like any other lesson. Turn this on if what you're writing about is personal or confidential.</div>
+      </div>
+
+      <button class="gen-btn" id="genBtn" onclick="generate()">Make my lesson →</button>
+      <div class="mode-note" id="seriesProgress" style="display:none;font-weight:700;color:var(--accent);"></div>
+      <div class="mode-note">
+        Want to see what a lesson looks like first? <a href="#" onclick="demoExample();return false;" style="color:var(--accent);font-weight:700;">See an instant example</a> (no waiting).
+      </div>
+    </div>
+  </div>
+
+  <div class="out-actions" id="outActions" style="display:none;">
+    <button class="primary" onclick="window.print()">Print / Save PDF</button>
+    <button onclick="toggleKey()">Show / hide answers &amp; notes</button>
+    <button onclick="regenerate()">↺ Make another</button>
+  </div>
+
+  <div class="stage">
+    <div class="sheet" id="sheet">
+      <div class="empty">
+        <h2>Your lesson will appear here</h2>
+        <p>Pick a topic and level above, then tap <b>Generate Lesson</b>.</p>
+      </div>
+    </div>
+  </div>
+
+<script src="token.js"></script>
+<script src="render.js"></script>
+<script>
+/* ============================================================
+   Generator-specific logic. The lesson rendering + free
+   activities (word search, scramble, answer key) live in
+   render.js and are shared with the library viewer.
+   ============================================================ */
+
+let MODE='topic', LVL='medium', ENG='deepseek';
+let FROM_PDF=false, PDF_SERIES_TITLE='';
+function setLvl(l){LVL=l;document.querySelectorAll('#levelSeg button').forEach(b=>b.classList.toggle('on',b.dataset.lvl===l));}
+
+/* ---------- PDF upload (allowlisted beta — see PDF_UPLOAD_ALLOWLIST in
+   api/generate.js). Extraction happens entirely IN THE BROWSER via
+   PDF.js, loaded lazily from a CDN only when this button is actually used
+   (so nobody else pays for the extra network request) — the PDF file
+   itself is never uploaded anywhere, only the extracted text is sent to
+   /api/generate, same as a normal paste. A long document is split into
+   several ~4,500-character chunks (well under api/generate.js's 6,000-char
+   per-request cap) and turned into a short SERIES of lessons — "Part 1",
+   "Part 2"... — one /api/generate call per chunk, run one at a time so
+   progress can be shown and no single request gets huge. ---------- */
+let PDFJS_LOADING = null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  if(PDFJS_LOADING) return PDFJS_LOADING;
+  PDFJS_LOADING = new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    // Pinned version (not "latest") so this can't change under us. NOTE:
+    // no Subresource Integrity hash here — this sandbox's network policy
+    // blocks reaching cdnjs.cloudflare.com to compute/verify one, so
+    // rather than ship a fabricated (and therefore silently-broken) hash,
+    // this is left without one. Before relying on this in production,
+    // fetch this exact URL once and add integrity="sha384-<hash>" +
+    // crossorigin="anonymous" (cdnjs' own site lists the correct hash per
+    // file/version).
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js';
+    s.onload = ()=>{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+      resolve();
+    };
+    s.onerror = ()=>reject(new Error('Could not load the PDF reader. Check your connection and try again.'));
+    document.head.appendChild(s);
+  });
+  return PDFJS_LOADING;
+}
+async function extractPdfText(file){
+  await loadPdfJs();
+  const buf = await file.arrayBuffer();
+  const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  let text = '';
+  for(let p=1; p<=doc.numPages; p++){
+    const page = await doc.getPage(p);
+    const content = await page.getTextContent();
+    text += content.items.map(it=>it.str).join(' ') + '\n\n';
+  }
+  return { text: text.trim(), pages: doc.numPages };
+}
+/* split on paragraph boundaries into ~4500-char chunks, capped at 8 parts
+   (~40 pages) so a single upload can't spawn an unbounded generation run */
+function chunkText(text, maxLen, maxParts){
+  const paras = text.split(/\n{2,}/).map(p=>p.trim()).filter(Boolean);
+  const chunks = [];
+  let cur = '';
+  for(const p of paras){
+    if(cur && (cur.length + p.length + 2) > maxLen){ chunks.push(cur); cur = p; }
+    else cur = cur ? (cur + '\n\n' + p) : p;
+    if(chunks.length >= maxParts) break;
+  }
+  if(cur && chunks.length < maxParts) chunks.push(cur);
+  return chunks.slice(0, maxParts);
+}
+async function handlePdfSelected(file){
+  if(!file) return;
+  const status = document.getElementById('pdfStatus');
+  status.style.display='block';
+  status.textContent = 'Reading ' + file.name + '…';
+  try{
+    const { text, pages } = await extractPdfText(file);
+    if(text.length < 200){
+      status.textContent = '⚠️ This PDF looks like scanned images (no readable text found) — please paste the text instead.';
+      return;
+    }
+    const chunks = chunkText(text, 4500, 8);
+    FROM_PDF = true;
+    PDF_SERIES_TITLE = file.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ').trim() || 'Document';
+    document.getElementById('privateToggle').checked = true;   // safer default for uploaded documents
+    if(chunks.length <= 1){
+      document.getElementById('pasteInput').value = chunks[0] || text;
+      status.textContent = `✓ Read ${pages} page${pages===1?'':'s'} from ${file.name} — check the level below, then tap "Make my lesson".`;
+    } else {
+      status.textContent = `✓ Read ${pages} pages from ${file.name} — this is long enough to become ${chunks.length} lessons ("Part 1" through "Part ${chunks.length}"). Tap "Make my lesson" to start.`;
+      PDF_CHUNKS = chunks;
+    }
+  }catch(e){
+    status.textContent = '⚠️ ' + (e.message || 'Could not read that PDF.');
+  }
+}
+let PDF_CHUNKS = null;
+
+/* fill the box with a random topic */
+function surpriseTopic(){
+  document.getElementById('topicInput').value = SURPRISE[Math.floor(Math.random()*SURPRISE.length)];
+  if(MODE==='paste') togglePaste();
+}
+/* switch between "type a topic" and "paste an article" */
+function togglePaste(){
+  MODE = (MODE==='paste') ? 'topic' : 'paste';
+  document.getElementById('topicField').style.display = (MODE==='paste')?'none':'block';
+  document.getElementById('pasteField').style.display = (MODE==='paste')?'block':'none';
+  document.getElementById('pasteToggle').textContent = (MODE==='paste') ? '↩ Type a topic instead' : '📄 Paste an article instead';
+}
+/* instant sample with no AI call */
+function demoExample(){
+  if(MODE!=='paste' && !document.getElementById('topicInput').value.trim()){
+    document.getElementById('topicInput').value = SURPRISE[Math.floor(Math.random()*SURPRISE.length)];
+  }
+  ENG='demo'; generate(); ENG='deepseek';
+}
+
+/* ---------- positive topic pool for "Surprise me" ---------- */
+const SURPRISE = [
+  "a newly discovered species deep in the ocean",
+  "how bees help grow the food we eat",
+  "a young inventor who solved a local problem",
+  "the science of why we dream",
+  "how libraries are changing in the digital age",
+  "a town that turned its waste into energy",
+  "the secret language of trees in a forest",
+  "how music helps the brain learn",
+  "a space telescope's newest discovery",
+  "the comeback of an endangered animal"
+];
+
+/* ---------- main ---------- */
+let LAST=null;
+function generate(){
+  const btn=document.getElementById('genBtn');
+  let topic = document.getElementById('topicInput').value.trim();
+  const pasted = document.getElementById('pasteInput').value.trim();
+  if(MODE==='surprise' && !topic){ topic = SURPRISE[Math.floor(Math.random()*SURPRISE.length)]; }
+  if(MODE==='topic' && !topic){ alert('Please type a topic, or choose "Surprise me".'); return; }
+  if(MODE==='paste' && !pasted){ alert('Please paste an article first.'); return; }
+
+  // the client-side Demo preview never calls the AI or saves anything, so
+  // it stays free to try with no login. The real generator costs AI calls
+  // and creates a lesson in the shared library, so it needs an account —
+  // the server re-checks trial/subscription itself either way (this is
+  // just a fast redirect for the common "not logged in at all" case).
+  let token = null;
+  if(ENG!=='demo'){
+    token = typeof dlReadToken==='function' ? dlReadToken() : null;
+    if(!token){
+      location.href = '/login?mode=signup&next=' + encodeURIComponent('/create');
+      return;
+    }
+  }
+
+  const visibility = document.getElementById('privateToggle').checked ? 'private' : 'public';
+
+  // a long PDF became several chunks (see handlePdfSelected) — walk
+  // through them one /api/generate call at a time instead of the normal
+  // single-shot path below, showing progress as each part lands.
+  if(ENG!=='demo' && PDF_CHUNKS && PDF_CHUNKS.length>1){
+    generatePdfSeries(token, visibility);
+    return;
+  }
+
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Generating...';
+
+  const req = { mode:MODE, level:LVL, topic:topic, article:pasted, visibility, viaPdf: FROM_PDF };
+
+  const finish = (lesson)=>{
+    LAST=lesson;
+    if(lesson.truncated){
+      alert("Heads up: this text was long, so only the first ~1,000 words were used for the lesson. For a longer document, use the PDF upload option to split it into several lessons instead.");
+    }
+    if(lesson.id){
+      // saved to the database — send them to the real interactive lesson
+      // (Present mode, per-word audio, draggable word search, Korean
+      // toggle) instead of only ever showing the static print sheet.
+      btn.innerHTML='Opening your lesson…';
+      location.href = '/lesson?id=' + encodeURIComponent(lesson.id);
+      return;
+    }
+    renderLesson(lesson, 'sheet');
+    btn.disabled=false; btn.textContent='Generate Lesson';
+    document.getElementById('outActions').style.display='flex';
+    document.getElementById('sheet').scrollIntoView({behavior:'smooth'});
+  };
+
+  if(ENG==='demo'){
+    setTimeout(()=>finish(buildDemoLesson(req)), 500);
+  } else {
+    callAI(req, token).then(finish).catch(err=>{
+      btn.disabled=false; btn.textContent='Generate Lesson';
+      alert(err.friendly || ('Could not reach the '+ENG+' engine.\n\nIf you are testing this file locally (not on your live Vercel site), the engine won\'t work — use the Demo button instead.\n\nOn the live site, check that your API key is set in Vercel.\n\nDetails: '+err.message));
+    });
+  }
+}
+function regenerate(){ generate(); }
+
+/* run one /api/generate call per PDF chunk, in sequence (not parallel —
+   keeps each request small/simple and lets progress be shown), then send
+   the student to the first part. Each part links to the next/previous via
+   its own lesson.html Next-button ("seq" ordering), so the whole series
+   reads like a short reading path. */
+async function generatePdfSeries(token, visibility){
+  const btn=document.getElementById('genBtn');
+  const progress=document.getElementById('seriesProgress');
+  btn.disabled=true;
+  progress.style.display='block';
+  const total = PDF_CHUNKS.length;
+  const madeIds = [];
+  for(let i=0;i<total;i++){
+    progress.textContent = `Making part ${i+1} of ${total}…`;
+    btn.innerHTML = '<span class="spin"></span>Part '+(i+1)+' / '+total;
+    try{
+      const lesson = await callAI({
+        mode:'paste', level:LVL, article:PDF_CHUNKS[i], topic:PDF_SERIES_TITLE,
+        visibility, viaPdf:true, partIndex:i+1, partTotal:total, seriesTitle:PDF_SERIES_TITLE
+      }, token);
+      if(lesson.id) madeIds.push(lesson.id);
+    }catch(e){
+      btn.disabled=false; btn.textContent='Generate Lesson';
+      progress.textContent = '';
+      alert('Part '+(i+1)+' failed: '+(e.friendly||e.message)+'\n\n'+(madeIds.length ? ('The first '+madeIds.length+' part(s) were made — open the first one from your Library, or try again for the rest.') : 'Nothing was saved yet — please try again.'));
+      return;
+    }
+  }
+  progress.textContent = `✓ Made all ${total} parts.`;
+  btn.innerHTML = 'Opening your lesson…';
+  if(madeIds.length) location.href = '/lesson?id=' + encodeURIComponent(madeIds[0]);
+  else { btn.disabled=false; btn.textContent='Generate Lesson'; }
+}
+
+/* ---------- real AI call — used once deployed to Vercel ---------- */
+async function callAI(req, token){
+  const headers = {'Content-Type':'application/json'};
+  if(token) headers.Authorization = 'Bearer ' + token;
+  const r = await fetch('/api/generate', {
+    method:'POST', headers,
+    body: JSON.stringify({ ...req, engine:ENG })
+  });
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok){
+    const e = new Error(data.error || ('server returned '+r.status));
+    e.friendly = data.error || null;
+    throw e;
+  }
+  return data;
+}
+
+/* ---------- build a believable lesson locally (Demo) ---------- */
+function buildDemoLesson(req){
+  const t = req.topic || "an interesting discovery";
+  const title = toTitle(t);
+  const L = req.level;
+  const lead = (L==='easy')
+    ? `Today we learn about ${t}. It is a new and interesting story.`
+    : (L==='hard')
+      ? `Scientists and curious minds around the world have been fascinated by ${t} — a subject that opens a surprising window onto how our world really works.`
+      : `Have you heard about ${t}? It is a fascinating topic that more and more people are talking about.`;
+  const paras = [
+    lead,
+    `Researchers say there is much to learn from ${t}. At first, it may seem like a small thing, but small things often lead to big <b>discoveries</b>. People who study it carefully find new <b>details</b> every year.`,
+    `One reason this matters is that it helps us understand the world around us. When we are <b>curious</b> and ask good questions, we often find <b>surprising</b> answers. That is how science moves forward.`,
+    `Of course, not everything is known yet. There are still many <b>mysteries</b>, and experts continue to <b>investigate</b>. Each new answer brings new questions, which is part of what makes learning so exciting.`,
+    `In the end, ${t} reminds us of something important: the world is full of wonder, and there is always more to <b>explore</b>. Staying curious is one of the best habits a person can have.`
+  ];
+  const vocab = [
+    {w:"discovery", p:"(n)", d:"something found or learned for the first time"},
+    {w:"detail", p:"(n)", d:"a small piece of information"},
+    {w:"curious", p:"(adj)", d:"wanting to know or learn about something"},
+    {w:"surprising", p:"(adj)", d:"unexpected; not what you thought"},
+    {w:"mystery", p:"(n)", d:"something that is hard to understand or explain"},
+    {w:"investigate", p:"(v)", d:"to study something carefully to find the truth"},
+    {w:"explore", p:"(v)", d:"to look around and learn about something new"},
+    {w:"wonder", p:"(n)", d:"a feeling of amazement and admiration"}
+  ];
+  const comp = [
+    `What is the main topic of this article?`,
+    `Why do small discoveries sometimes matter, according to the text?`,
+    `What does the writer say helps science move forward?`,
+    `Are there still things we do not know about this topic? Explain.`,
+    `In your own words, what is the "important reminder" at the end?`
+  ];
+  const discuss = [
+    `Are you curious about this topic? Why or why not?`,
+    `What is something you discovered or learned recently that surprised you?`,
+    `Why do you think being curious is a good habit?`,
+    `If you could investigate any mystery in the world, what would it be?`,
+    `Do you prefer to explore new things, or stay with what you know? Why?`
+  ];
+  return {
+    title: title,
+    kicker: (req.mode==='paste')?'From your article · Reading':'Topic Lesson · Reading',
+    meta: levelMeta(L),
+    levelTag: levelTagText(L),
+    paras: trimForLevel(paras, L),
+    vocab: vocab.slice(0, L==='easy'?6:8),
+    comprehension: comp.slice(0, L==='easy'?3:5),
+    discussion: discuss.slice(0, L==='easy'?3:5),
+    note: "Demo lesson — structure preview. Connect DeepSeek or Claude for a fully custom article on this exact topic."
+  };
+}
+function trimForLevel(paras,L){ if(L==='easy') return paras.slice(0,3); if(L==='medium') return paras.slice(0,4); return paras; }
+function levelMeta(L){ return {easy:'Beginner · CEFR A2 · ~40 min',medium:'Intermediate · CEFR B1 · ~50 min',hard:'Advanced · CEFR B2 · ~60 min'}[L]; }
+function levelTagText(L){ return {easy:'Beginner · A2',medium:'Intermediate · B1',hard:'Advanced · B2'}[L]; }
+function toTitle(s){ return s.replace(/\b\w/g,c=>c.toUpperCase()).slice(0,70); }
+
+// PDF upload is a limited allowlisted beta (see api/generate.js's
+// PDF_UPLOAD_ALLOWLIST, which is the actual enforcement — this is only
+// UI visibility, so hiding the button here is a convenience, not security).
+(async function(){
+  try{
+    if(typeof dlCheckAccess !== 'function') return;
+    const acc = await dlCheckAccess();
+    const allowlist = ['louwrensoberholzer@gmail.com'];
+    if(acc && acc.loggedIn && acc.email && allowlist.includes(String(acc.email).toLowerCase())){
+      document.getElementById('pdfActions').style.display = 'flex';
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

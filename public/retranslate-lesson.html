@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retranslate a Lesson — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .twrap{max-width:520px;margin:60px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;}
+  .twrap h1{font-family:'Arial Black',sans-serif;font-size:24px;margin-bottom:10px;color:var(--ink);text-align:center;}
+  .twrap p{color:var(--muted);text-align:center;}
+  .rfield{margin-top:18px;}
+  .rfield label{display:block;font-weight:700;font-size:13px;color:var(--ink);margin-bottom:6px;}
+  .rfield input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--soft);font-size:15px;}
+  .rbtn{width:100%;margin-top:20px;padding:12px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;cursor:pointer;}
+  .rbtn:disabled{opacity:.5;cursor:default;}
+  #status{font-size:16px;font-weight:700;color:var(--ink);margin-top:18px;text-align:center;}
+  #detail{color:var(--muted);font-size:14px;margin-top:8px;white-space:pre-wrap;text-align:left;background:var(--soft);border-radius:10px;padding:14px;display:none;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+  </div></div>
+
+  <!-- Targeted repair tool for a single lesson's Korean translation, for
+       when a lesson is found with mismatched English/Korean (see the
+       sentence-count drift bug fixed in api/translate.js — this is how a
+       lesson that already has a bad, already-saved translation gets a
+       clean one). GET /api/translate?token=...&id=...&lang=ko already
+       re-translates a specific lesson and overwrites its stored
+       translation (merge-duplicates upsert) even if one already exists —
+       no separate delete step needed, this page is just a friendly
+       trigger for that existing endpoint. -->
+  <div class="twrap">
+    <h1>🔁 Retranslate a lesson</h1>
+    <p>Use this when a lesson's Korean translation doesn't match the English (e.g. wrong text in the memory game or Read the Article). It regenerates and overwrites that lesson's translation.</p>
+
+    <div class="rfield">
+      <label for="lessonId">Lesson ID</label>
+      <input id="lessonId" type="text" placeholder="e.g. the-first-aeroplane-...">
+    </div>
+    <div class="rfield">
+      <label for="lang">Language code</label>
+      <input id="lang" type="text" value="ko">
+    </div>
+    <button class="rbtn" id="go">Retranslate</button>
+
+    <div id="status"></div>
+    <div id="detail"></div>
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const token = params.get('token') || '';
+if(params.get('id')) document.getElementById('lessonId').value = params.get('id');
+if(params.get('lang')) document.getElementById('lang').value = params.get('lang');
+
+const statusEl = document.getElementById('status');
+const detailEl = document.getElementById('detail');
+const btn = document.getElementById('go');
+
+if(!token){
+  statusEl.textContent = 'Add your token to the web address: /retranslate-lesson.html?token=YOUR_TOKEN';
+  btn.disabled = true;
+} else {
+  btn.addEventListener('click', async () => {
+    const id = document.getElementById('lessonId').value.trim();
+    const lang = document.getElementById('lang').value.trim() || 'ko';
+    if(!id){ statusEl.textContent = 'Enter a lesson ID first.'; return; }
+    btn.disabled = true;
+    statusEl.textContent = 'Retranslating…';
+    detailEl.style.display = 'none';
+    try{
+      const r = await fetch('/api/translate?token=' + encodeURIComponent(token) + '&id=' + encodeURIComponent(id) + '&lang=' + encodeURIComponent(lang));
+      const j = await r.json();
+      if(j.error){
+        statusEl.textContent = '⚠️ ' + j.error;
+      } else if(j.ok === false){
+        statusEl.textContent = '⚠️ ' + (j.reason || 'failed') + ' — safe to click Retranslate again.';
+      } else if(j.ok && j.translated){
+        statusEl.textContent = '✅ Retranslated: ' + j.translated;
+        detailEl.style.display = 'block';
+        detailEl.textContent = 'Refresh the lesson page to see the corrected Korean.';
+      } else if(j.message){
+        statusEl.textContent = j.message;
+      } else {
+        statusEl.textContent = '✅ Done.';
+      }
+    }catch(e){
+      statusEl.textContent = 'Network hiccup — click Retranslate to retry.';
+    }
+    btn.disabled = false;
+  });
+}
+</script>
+</body>
+</html>

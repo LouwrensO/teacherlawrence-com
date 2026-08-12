@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My homework — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .hw{max-width:760px;margin:30px auto 60px;padding:0 18px;font-family:Helvetica,Arial,sans-serif;}
+  .hw h1{font-family:'Arial Black',sans-serif;font-size:26px;color:var(--ink);margin-bottom:4px;}
+  .hw .sub{color:var(--muted);margin-bottom:22px;font-size:14px;}
+  .hw .msg{color:var(--muted);padding:40px 0;text-align:center;}
+  .hw-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--rule);border-radius:14px;
+    padding:16px 18px;margin-bottom:12px;cursor:pointer;transition:transform .1s,box-shadow .1s;}
+  .hw-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(30,40,90,.08);}
+  .hw-card .ico{width:46px;height:46px;border-radius:12px;background:var(--soft);display:flex;align-items:center;
+    justify-content:center;font-size:22px;flex:none;overflow:hidden;}
+  .hw-card .ico img{width:100%;height:100%;object-fit:cover;}
+  .hw-card .info{flex:1;min-width:0;}
+  .hw-card .info b{display:block;font-size:16px;color:var(--ink);}
+  .hw-card .info small{color:var(--muted);font-size:12px;}
+  .hw-status{flex:none;font-size:12px;font-weight:800;padding:5px 12px;border-radius:14px;white-space:nowrap;}
+  .hw-status.todo{background:#fff4e0;color:#a06a00;}
+  .hw-status.started{background:#e8f0fe;color:#2f5fce;}
+  .hw-status.done{background:#e6f6ee;color:var(--accent2);}
+  .hw-scores{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;}
+  .hw-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--soft);color:var(--accent);}
+  .hw-pill-total{background:var(--accent);color:#fff;}
+  .no-class-card{background:var(--soft);border:1px solid var(--rule);border-radius:14px;padding:26px;text-align:center;}
+  .no-class-card .ico{font-size:40px;margin-bottom:8px;}
+  .no-class-card a{display:inline-block;margin-top:14px;font-weight:800;color:#fff;background:var(--accent);
+    padding:11px 22px;border-radius:22px;text-decoration:none;}
+  .hw-section-title{font-family:'Arial Black',sans-serif;font-size:18px;color:var(--ink);margin:30px 0 4px;}
+  .tiles{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 16px;}
+  .tile{flex:1;min-width:110px;background:#fff;border:1px solid var(--rule);border-radius:14px;padding:14px 16px;}
+  .tile .n{font-family:'Arial Black',sans-serif;font-size:24px;color:var(--ink);line-height:1;}
+  .tile .t{font-size:11px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+    <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script src="token.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="hw">
+    <h1 data-i18n="homework.pageTitle">📕 My homework</h1>
+    <p class="sub" data-i18n="homework.pageSubtitle">Lessons your teacher assigned. Do them, and your teacher will see your scores.</p>
+    <div id="body"><div class="msg" data-i18n="admin.loading">Loading…</div></div>
+  </div>
+
+<script src="lessons.js"></script>
+<script>
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const ACTIVITY_LABEL = { memory:'🧠 Memory', scramble:'🔤 Scramble', match:'🎯 Match', speaking:'🎙 Speaking', comprehension:'✍️ Writing' };
+
+  async function loadMeta(){
+    let list = [];
+    try { const cached = sessionStorage.getItem('dl_lessons_meta'); if (cached) list = JSON.parse(cached); } catch(e){}
+    if (!list.length) {
+      try { const r = await fetch('/api/lessons?meta=1'); if (r.ok) { list = await r.json(); sessionStorage.setItem('dl_lessons_meta', JSON.stringify(list)); } } catch(e){}
+    }
+    if (!list.length && window.LESSONS) list = window.LESSONS;
+    const byId = {}; list.forEach(L => byId[L.id] = L);
+    return byId;
+  }
+
+  function bestScores(submissions){
+    const best = {};
+    (submissions||[]).forEach(s => {
+      if (s.score==null) return;
+      const cur = best[s.activity];
+      if (!cur || s.score > cur.score) best[s.activity] = s;
+    });
+    return best;
+  }
+
+  function speakingWeekTilesHtml(log){
+    const since = Date.now() - 7*24*60*60*1000;
+    const week = log.filter(e => e.created && new Date(e.created).getTime() >= since);
+    if(!week.length) return '';
+    const avg = Math.round((week.reduce((s,e)=>s+(e.score||0),0)/week.length)*10)/10;
+    return `<div class="tiles">
+        <div class="tile"><div class="n">${week.length}</div><div class="t">${dlT('homework.speakingThisWeek')}</div></div>
+        <div class="tile"><div class="n">${avg} / 10</div><div class="t">${dlT('homework.speakingAvgScore')}</div></div>
+      </div>`;
+  }
+
+  // Speaking Homework works for ANY subscribed student on any lesson at
+  // any time (see api/speak-chat.js's mode:'score') — unlike the
+  // assignment-based homework list above, it's never gated behind being
+  // in a class, so this section always renders regardless of `inClass`.
+  function speakingSectionHtml(log, meta){
+    let html = `<h2 class="hw-section-title">${dlT('homework.mySpeakingTitle')}</h2>`;
+    if(!log.length) return html + `<p class="sub">${dlT('homework.noSpeakingYet')}</p>`;
+    html += speakingWeekTilesHtml(log);
+    html += log.slice(0, 20).map(e => {
+      const L = meta[e.lessonId] || {};
+      const icon = L.image ? `<img src="${esc(L.image)}" alt="">` : (L.icon || '🎙');
+      return `<a class="hw-card" style="text-decoration:none;color:inherit;" href="/lesson?id=${encodeURIComponent(e.lessonId||'')}">
+          <div class="ico">${icon}</div>
+          <div class="info">
+            <b>${esc(L.title || e.lessonId || '')}</b>
+            <small>${esc(e.feedback || '')}</small>
+          </div>
+          <span class="hw-status done">${ACTIVITY_LABEL[e.activity]||'🎙'} ${e.score}/${e.max}</span>
+        </a>`;
+    }).join('');
+    return html;
+  }
+
+  async function render(){
+    const body = document.getElementById('body');
+    const token = (typeof dlReadToken==='function') ? dlReadToken() : null;
+    if(!token){ body.innerHTML = `<div class="msg">${dlT('homework.needLogin')}</div>`; return; }
+    let data = { inClass:false, assignments:[] }, speakingLog = [];
+    try {
+      const [hr, sr] = await Promise.all([
+        fetch('/api/save-profile?homework=1', { headers:{ Authorization:'Bearer '+token } }),
+        fetch('/api/save-profile?mySpeakingLog=1', { headers:{ Authorization:'Bearer '+token } })
+      ]);
+      data = await hr.json();
+      const sj = await sr.json();
+      speakingLog = (sj && sj.log) || [];
+    } catch(e){ body.innerHTML = `<div class="msg">${dlT('admin.loadError')}</div>`; return; }
+
+    const meta = await loadMeta();
+    let html = '';
+
+    if(!data.inClass){
+      html += `<div class="no-class-card">
+           <div class="ico">🏫</div>
+           <h3>${dlT('homework.noClassTitle')}</h3>
+           <p class="sub" style="margin:6px 0 0">${dlT('homework.noClassBody')}</p>
+           <a href="/">${dlT('homework.browseLibrary')}</a>
+         </div>`;
+    } else {
+      const assignments = data.assignments || [];
+      html += !assignments.length ? `<div class="msg">${dlT('homework.noneYet')}</div>` :
+        assignments.map(a => {
+          const L = meta[a.lessonId] || {};
+          const best = bestScores(a.submissions);
+          const activities = Object.keys(best);
+          const status = !a.submissions.length ? 'todo' : 'started';
+          const statusLabel = !a.submissions.length ? dlT('homework.statusTodo') : dlT('homework.statusStarted');
+          const icon = L.image ? `<img src="${esc(L.image)}" alt="">` : (L.icon || '📄');
+          return `<div class="hw-card" onclick="location.href='/lesson?id=${encodeURIComponent(a.lessonId)}'">
+              <div class="ico">${icon}</div>
+              <div class="info">
+                <b>${esc(L.title || a.lessonId)}</b>
+                <small>${L.levelTag || L.level || ''}</small>
+                ${activities.length ? `<div class="hw-scores">${activities.map(act =>
+                  `<span class="hw-pill">${ACTIVITY_LABEL[act]||act}: ${best[act].score}/${best[act].max}</span>`).join('')}${a.total ? `<span class="hw-pill hw-pill-total">${dlT('homework.total')}: ${a.total.sum}/${a.total.max}</span>` : ''}</div>` : ''}
+              </div>
+              <span class="hw-status ${status}">${statusLabel}</span>
+            </div>`;
+        }).join('');
+    }
+
+    html += speakingSectionHtml(speakingLog, meta);
+    body.innerHTML = html;
+  }
+
+  render();
+  const prevLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => { render(); if(prevLangHook) prevLangHook(lang); };
+</script>
+</body>
+</html>

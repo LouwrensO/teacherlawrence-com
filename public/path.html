@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Path — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+</head>
+<body>
+  <!-- top nav. #fullNavLinks is hidden for students on the locked path —
+       same reasoning/pattern as lesson.html's dlApplyStudentChrome(): the
+       path IS the app, there's nowhere else for them to go. -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <span id="fullNavLinks">
+      <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+      <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+      <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+      <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    </span>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+    <a class="nav-link cta" id="createOwnLink" href="/create" data-i18n="nav.createOwn">Create your own</a>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <!-- hero -->
+  <div class="hero"><div class="hero-inner">
+    <h1 data-i18n="path.title">Your Learning Path</h1>
+    <p data-i18n="path.subtitle">Start at the very beginning and move up, one lesson at a time — from first sounds all the way to advanced reading. Tick lessons off as you go.</p>
+    <div class="path-overall">
+      <div id="startBanner" style="display:none;background:#fff;border:1px solid var(--rule);border-radius:12px;padding:10px 14px;font-family:Helvetica,Arial,sans-serif;font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+      <div class="path-overall-bar"><div id="overallFill"></div></div>
+      <div id="overallText" style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:var(--muted);margin-top:8px;"></div>
+      <a id="continueBtn" class="nav-link cta" style="display:none;margin-top:14px;">▶ Continue where you left off</a>
+    </div>
+  </div></div>
+
+  <div class="active-plan" id="activePlan" style="display:none;"></div>
+
+  <!-- Speaking practice is the daily habit we want returning students to
+       start with, so it sits BIG at the top of the Path (above the lesson
+       list) with the streak calendar shrunk to a small side widget. The
+       card links straight into Practice Speaking for the current lesson. -->
+  <div class="path-practice-row">
+    <div class="speak-hero-col">
+      <a class="speak-hero" id="speakHero" href="/practice">
+        <div class="speak-hero-mic">🎙</div>
+        <div class="speak-hero-text">
+          <div class="speak-hero-title" id="speakHeroTitle"></div>
+          <span class="speak-hero-today" id="speakHeroToday"></span>
+          <div class="speak-hero-sub" id="speakHeroSub"></div>
+          <span class="speak-hero-btn" id="speakHeroBtn"></span>
+        </div>
+      </a>
+      <div class="speak-hero-more" id="speakHeroMore" style="display:none;">
+        <a id="speakHeroChatLink" href="#"></a>
+        <a id="speakHeroHwLink" href="#"></a>
+      </div>
+    </div>
+  <!-- Just how long they've practiced today, plain and simple — the old
+       streak-flame + monthly calendar grid was more than this needed to
+       be. Still visible to the teacher (see privacy.teacherNote below;
+       time is synced to the account by dlSyncPracticeToServer() in
+       practice.js, same as before). -->
+  <div class="streak-card" id="streakCard">
+    <div class="time-today">
+      <div class="time-today-num" id="timeTodayNum">0 min</div>
+      <div class="time-today-label" data-i18n="path.timeTodayLabel">Today</div>
+    </div>
+    <div class="streak-total" id="streakTotal" style="display:none;"></div>
+    <div class="streak-note" id="streakNote" style="display:none;"></div>
+  </div>
+  </div>
+  <script>
+  // Fill in the speaking-hero text (localized) and re-fill on language
+  // change. Its link (and lesson-specific label) is set later in render(),
+  // once the lesson list has loaded and we know the current lesson.
+  function renderSpeakHero(){
+    document.getElementById('speakHeroTitle').textContent = dlT('path.speakTitle');
+    document.getElementById('speakHeroToday').textContent = dlT('path.speakToday');
+    document.getElementById('speakHeroSub').textContent = dlT('path.speakSub');
+    document.getElementById('speakHeroBtn').textContent = dlT('path.speakBtn');
+    document.getElementById('speakHeroChatLink').textContent = dlT('practice.modeChat');
+    document.getElementById('speakHeroHwLink').textContent = dlT('lesson.stepLetsTalk');
+  }
+  renderSpeakHero();
+  const prevSpeakLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => { renderSpeakHero(); if(prevSpeakLangHook) prevSpeakLangHook(lang); };
+  </script>
+  <script src="token.js"></script>
+  <script src="practice.js"></script>
+  <script>
+  function renderStreak(){
+    const card = document.getElementById('streakCard');
+    const info = dlGetStreakInfo(1);   // just need todaySeconds — no rolling window to build anymore
+    document.getElementById('timeTodayNum').textContent = info.todaySeconds > 0
+      ? dlFormatPracticeTime(info.todaySeconds)
+      : dlT('path.noneYetToday');
+    // lifetime total, alongside today's — dlPullPracticeFromServer()
+    // already merges the account's full history into the local log, so
+    // this needs no extra network call
+    const totalEl = document.getElementById('streakTotal');
+    const totalSeconds = dlGetTotalPracticeSeconds();
+    if(totalSeconds > 0){
+      totalEl.textContent = dlT('path.totalPracticeTime').replace('{time}', dlFormatPracticeTime(totalSeconds));
+      totalEl.style.display = 'block';
+    } else {
+      totalEl.style.display = 'none';
+    }
+    card.style.display = 'block';
+  }
+  // show first from local data (instant), then refresh from the account
+  renderStreak();
+  dlPullPracticeFromServer().then(() => {
+    renderStreak();
+    // privacy note: only for signed-in students, whose activity the teacher sees
+    if((typeof dlReadToken==='function' && dlReadToken()) && localStorage.getItem('dl_role')==='student'){
+      const n = document.getElementById('streakNote');
+      n.textContent = dlT('privacy.teacherNote');
+      n.style.display = 'block';
+    }
+  });
+  const prevStreakLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => { renderStreak(); if(prevStreakLangHook) prevStreakLangHook(lang); };
+  </script>
+
+  <div class="path-wrap" id="pathWrap"></div>
+
+<script src="lessons.js"></script>
+<script>
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// students on the locked path get no Library/Path/Practice/Games/
+// Create-your-own escape hatches — same pattern as lesson.html's
+// dlApplyStudentChrome(). Teachers/guests: no change.
+if(dlIsStudent()){
+  const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
+  const create = document.getElementById('createOwnLink'); if(create) create.style.display='none';
+}
+// Real per-lesson progress, three states: 'none' (never opened) / 'in_progress'
+// (opened, or started but hasn't hit the "done" bar yet) / 'done' (server-
+// computed from actual reading/writing/game/talk signals — see
+// public/lesson.html's dlProgressTouch() and api/save-profile.js's
+// body.progress handler). Previously a lesson turned green the INSTANT it
+// was opened, with no relation to whether the student did anything — a
+// teacher flagged this as meaningless ("I can just click on any lesson and
+// it says done"), hence the three states now.
+// Kept per-user so siblings sharing one device (each with their own
+// username+PIN login) never overwrite each other's progress.
+function dlProgressKey(){ return 'dl_progress_' + (localStorage.getItem('dl_uid')||'guest'); }
+function getProgressMap(){
+  try{
+    const key = dlProgressKey();
+    let raw = localStorage.getItem(key);
+    if(raw==null){
+      // one-time migration from the old two-state "done" Set (pre this
+      // change) — anything already marked done stays done instead of
+      // silently reverting to "not started".
+      const oldKey = 'dl_done_' + (localStorage.getItem('dl_uid')||'guest');
+      const legacy = localStorage.getItem(oldKey) || localStorage.getItem('dl_done');
+      const map = {};
+      if(legacy){
+        try{ JSON.parse(legacy).forEach(id=>{ map[id] = { state:'done', steps:{legacy:true} }; }); }catch(e){}
+      }
+      raw = JSON.stringify(map);
+      localStorage.setItem(key, raw);
+    }
+    return JSON.parse(raw||'{}');
+  }catch(e){ return {}; }
+}
+// Server progress (logged-in users only — see the fetch at the bottom of
+// this file) is the source of truth a teacher's dashboard also reads;
+// null until that fetch resolves. Combined with the local map by taking
+// whichever is "further along" for each lesson, so a same-device manual
+// mark or a guest's local-only progress isn't clobbered by a server
+// response that just hasn't caught up yet.
+let SERVER_PROGRESS = null;
+const PROGRESS_RANK = { done:2, in_progress:1, none:0 };
+function progressStateFor(id, localMap){
+  const l = (localMap[id] && localMap[id].state) || 'none';
+  const s = (SERVER_PROGRESS && SERVER_PROGRESS[id] && SERVER_PROGRESS[id].state) || 'none';
+  return (PROGRESS_RANK[l]||0) >= (PROGRESS_RANK[s]||0) ? l : s;
+}
+
+let ALL = [];
+// Bible topic is visible by default (see public/index.html) — included in
+// the Path grouping too unless the signed-in user has explicitly hidden
+// it; set by the login gate script at the end of this file once
+// dlCheckAccess() resolves.
+let SHOW_BIBLE = true;
+
+// The student's currently active level on the locked path (see the level
+// switcher in renderLockedPath()/switchLevel()) — best-effort instant
+// default from localStorage, refined once the server profile/progress
+// resolve (see resolveActiveLevel() and the two IIFEs at the bottom of
+// this file).
+let ACTIVE_LEVEL = localStorage.getItem('dl_level') || LEVELS[0].key;
+// Whether the collapsed level-switch chip row (renderLockedPath()) is
+// currently expanded — a plain in-memory flag, not persisted, so it
+// starts collapsed again on every fresh page load.
+let LEVEL_SWITCH_OPEN = false;
+// the account's real profiles.level, once dlCheckAccess() resolves — kept
+// separate from ACTIVE_LEVEL (which always has a default value) so the
+// SERVER_PROGRESS IIFE below can tell whether it's still safe to fall
+// through to the progress-inference branch of resolveActiveLevel().
+let PROFILE_LEVEL = null;
+
+/* Decide which level a student should land on. Priority:
+   1. the server's profiles.level, if it's a real level key — covers both
+      an old placement-test student's saved level (this is the fix for
+      returning students being sent back to Phonics) and a level chosen
+      from another device.
+   2. no server level yet, but the student already has real lesson_progress
+      somewhere — infer from the highest-level lesson touched (covers
+      students who worked the brief, all-levels flat path before this
+      per-level switcher shipped).
+   3. otherwise a brand-new student: fall back to localStorage, else the
+      very first level (Phonics). */
+function resolveActiveLevel(serverLevel){
+  if(serverLevel && LEVEL_ORDER.includes(serverLevel)) return serverLevel;
+  if(SERVER_PROGRESS){
+    let best = -1;
+    Object.keys(SERVER_PROGRESS).forEach(id=>{
+      const st = SERVER_PROGRESS[id] && SERVER_PROGRESS[id].state;
+      if(st!=='in_progress' && st!=='done') return;
+      const lesson = ALL.find(x=>x.id===id);
+      if(!lesson) return;
+      const idx = LEVEL_ORDER.indexOf(lesson.level);
+      if(idx>best) best = idx;
+    });
+    if(best>=0) return LEVEL_ORDER[best];
+  }
+  return localStorage.getItem('dl_level') || LEVELS[0].key;
+}
+
+async function load(){
+  try{
+    const r = await fetch('/api/lessons');
+    if(r.ok){ const j = await r.json(); if(Array.isArray(j)&&j.length) ALL = j; }
+  }catch(e){}
+  if(!ALL.length) ALL = LESSONS.slice();
+  render();
+}
+
+function ordered(){
+  // group by level, sort within level using the shared canonical order
+  // (public/lessons.js's dlOrderedLessons — same comparator path.html and
+  // lesson.html both use, so "next lesson" never disagrees between pages)
+  const groups = LEVELS.map(lv => ({
+    lv,
+    // private "Create Your Own" lessons never appear here — defense in
+    // depth alongside the server-side RLS policy on this unauthenticated fetch
+    items: dlOrderedLessons(ALL.filter(x=>x.level===lv.key && x.visibility!=='private' && (SHOW_BIBLE || topicOf(x)!==BIBLE_TOPIC)))
+  })).filter(g=>g.items.length);
+  return groups;
+}
+
+// Manual override — a student (or a teacher demoing) can still force a
+// lesson to "done"/not-done by hand. Local-only (not sent to the server),
+// so it doesn't fool a teacher's dashboard the way the old blanket
+// on-open flag did; it only affects this device's own Path view, and
+// "further along" wins if the server later reports real progress too.
+function toggleDone(ev, id){
+  ev.preventDefault(); ev.stopPropagation();
+  const map = getProgressMap();
+  const cur = progressStateFor(id, map);
+  if(cur === 'done') delete map[id];
+  else map[id] = { state:'done', steps: Object.assign({}, (map[id]&&map[id].steps)||{}, {manual:true}) };
+  localStorage.setItem(dlProgressKey(), JSON.stringify(map));
+  render();
+}
+
+/* Locked path view for students: a single "Up next" card plus a flat list
+   (no level headers, no starting-level banner — decision was "everyone
+   starts at lesson 1", see onboard.html) where lessons at/before the
+   current one are real links and everything after renders locked/dimmed
+   with no link and no manual toggleDone() override (that bypass can't
+   coexist with real gating). Teachers/guests never call this — see
+   render() below. */
+function renderLockedPath(){
+  const localMap = getProgressMap();
+  const flat = dlLevelPathList(ALL.filter(x=>SHOW_BIBLE || topicOf(x)!==BIBLE_TOPIC), ACTIVE_LEVEL);
+  const stateOf = (id) => progressStateFor(id, localMap);
+  const total = flat.length, doneCount = flat.filter(x=>stateOf(x.id)==='done').length;
+
+  document.getElementById('overallFill').style.width = (total?Math.round(doneCount/total*100):0)+'%';
+  document.getElementById('overallText').textContent = doneCount+' '+dlT('path.completeOf')+' '+total+' '+dlT('path.lessonsComplete');
+  const banner = document.getElementById('startBanner'); if(banner) banner.style.display='none';
+
+  const currentId = dlCurrentPathLessonId(flat, stateOf);
+  const cont = document.getElementById('continueBtn');
+  const currentLesson = flat.find(x=>x.id===currentId);
+  if(currentLesson){ cont.style.display='inline-block'; cont.href='lesson?id='+encodeURIComponent(currentId); cont.textContent=dlT('path.continue')+' '+currentLesson.title; }
+  else { cont.style.display='none'; }
+
+  const speakTarget = currentLesson || flat[0];
+  const speakHero = document.getElementById('speakHero');
+  if(speakHero && speakTarget){
+    speakHero.href = 'lesson?id='+encodeURIComponent(speakTarget.id)+'&mode=practice';
+    const sub = document.getElementById('speakHeroSub');
+    if(sub) sub.textContent = dlT('path.speakSub') + (speakTarget.title ? ' · ' + speakTarget.title : '');
+    const chatLink = document.getElementById('speakHeroChatLink');
+    const hwLink = document.getElementById('speakHeroHwLink');
+    if(chatLink) chatLink.href = 'lesson?id='+encodeURIComponent(speakTarget.id)+'&mode=practice&sub=chat';
+    if(hwLink) hwLink.href = 'lesson?id='+encodeURIComponent(speakTarget.id)+'&step=talk';
+    const more = document.getElementById('speakHeroMore');
+    if(more) more.style.display = 'flex';
+  }
+
+  const rows = flat.map(it=>{
+    const state = stateOf(it.id);
+    const locked = !dlOwnerPreviewActive() && it.id !== currentId && state !== 'done';
+    const checkContent = state==='done' ? '✓' : (it.id===currentId ? '◐' : '🔒');
+    const inner = `
+      <span class="pl-check">${checkContent}</span>
+      <span class="pl-icon">${it.image?`<img loading="lazy" src="${esc(it.image)}" alt="">`:(it.icon||'📄')}</span>
+      <span class="pl-main"><span class="pl-title">${esc(it.title)}</span>
+        <span class="pl-sum">${esc(it.summary||'')}</span></span>`;
+    return locked
+      ? `<div class="path-lesson locked-path">${inner}</div>`
+      : `<a class="path-lesson ${state}" href="lesson?id=${encodeURIComponent(it.id)}">${inner}</a>`;
+  }).join('');
+  // Level switcher — collapsed by default behind a one-line "Level: X
+  // Change" summary, since level is now chosen once at sign-up (see
+  // onboard.html's level picker) and only needs the full 8-button chip
+  // row for the rare case of actually switching. Picking a level starts
+  // at its lesson 1 and each level keeps its own independent
+  // progress/cursor (see resolveActiveLevel()/switchLevel()); chips reuse
+  // the .chip/.chip.on classes already defined in style.css for
+  // index.html's level filter. LEVEL_SWITCH_OPEN persists across re-render
+  // so picking a level doesn't need two clicks next time.
+  const curLevel = LEVELS.find(l=>l.key===ACTIVE_LEVEL);
+  const switcherHtml = `<div class="path-level-switch" style="margin-bottom:18px;">
+    <div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:var(--muted);">
+      ${dlT('path.currentLevel')} <b>${esc(curLevel?curLevel.label:ACTIVE_LEVEL)}</b>
+      <a href="#" onclick="toggleLevelSwitch(event)" style="margin-left:8px;">${dlT('path.changeLevel')}</a>
+    </div>
+    ${LEVEL_SWITCH_OPEN ? `<div style="margin-top:8px;">${LEVELS.map(l=>`<button type="button" class="chip${l.key===ACTIVE_LEVEL?' on':''}" onclick="switchLevel('${l.key}')">${esc(l.label)}</button>`).join('')}</div>` : ''}
+  </div>`;
+  document.getElementById('pathWrap').innerHTML = `${switcherHtml}<section class="path-level"><div class="path-list">${rows}</div></section>`;
+}
+
+function toggleLevelSwitch(ev){
+  ev.preventDefault();
+  LEVEL_SWITCH_OPEN = !LEVEL_SWITCH_OPEN;
+  render();
+}
+
+/* Switch the active level: re-render instantly from local data (that
+   level's own progress/cursor already resumes correctly since
+   lesson_progress is keyed per lesson id), then persist to the account so
+   it's remembered across devices/sessions (api/save-profile.js's setLevel
+   branch) — fire-and-forget, same style as onboard.html's dlSaveProfile(). */
+async function switchLevel(key){
+  if(key === ACTIVE_LEVEL) return;
+  ACTIVE_LEVEL = key;
+  LEVEL_SWITCH_OPEN = false;
+  localStorage.setItem('dl_level', key);
+  render();
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    await fetch('/api/save-profile', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ setLevel: key })
+    });
+  }catch(e){}
+}
+
+function render(){
+  if(dlIsStudent()){ renderLockedPath(); return; }
+  const localMap = getProgressMap();
+  const groups = ordered();
+  const flat = [];
+  groups.forEach(g=>g.items.forEach(it=>flat.push(it)));
+  const stateOf = (id) => progressStateFor(id, localMap);
+  const total = flat.length, doneCount = flat.filter(x=>stateOf(x.id)==='done').length;
+
+  // starting level chosen at onboarding (students)
+  const order = LEVELS.map(l=>l.key);
+  const startLevel = localStorage.getItem('dl_level') || '';
+  const startIdx = order.indexOf(startLevel);
+  const banner = document.getElementById('startBanner');
+  if(startIdx > 0){
+    const lv = LEVELS.find(l=>l.key===startLevel);
+    banner.style.display='block';
+    banner.innerHTML = `${dlT('path.startingAt')} <b>${esc(lv?lv.label:startLevel)}</b>. ${dlT('path.earlierLevels')}`;
+  } else { banner.style.display='none'; }
+
+  // overall progress
+  document.getElementById('overallFill').style.width = (total?Math.round(doneCount/total*100):0)+'%';
+  document.getElementById('overallText').textContent = doneCount+' '+dlT('path.completeOf')+' '+total+' '+dlT('path.lessonsComplete');
+  // Continue = resume a lesson already in progress before starting a fresh
+  // one — "pick up where you left off" beats always jumping to the next
+  // untouched lesson — at/after the chosen starting level (fallback: whole list)
+  const atOrAfter = flat.filter(x => startIdx<=0 ? true : order.indexOf(x.level) >= startIdx);
+  const nextIn = (list) => list.find(x=>stateOf(x.id)==='in_progress') || list.find(x=>stateOf(x.id)==='none');
+  const next = nextIn(atOrAfter) || nextIn(flat);
+  const cont = document.getElementById('continueBtn');
+  if(next){ cont.style.display='inline-block'; cont.href='lesson?id='+encodeURIComponent(next.id); cont.textContent=dlT('path.continue')+' '+next.title; }
+  else { cont.style.display='none'; }
+
+  // point the speaking hero at the current lesson's Practice Speaking mode.
+  // Fall back to the very first lesson when everything's done, so the card
+  // always leads somewhere; /practice (its static href) covers the no-JS case.
+  const speakTarget = next || flat[0];
+  const speakHero = document.getElementById('speakHero');
+  if(speakHero && speakTarget){
+    speakHero.href = 'lesson?id='+encodeURIComponent(speakTarget.id)+'&mode=practice';
+    const sub = document.getElementById('speakHeroSub');
+    if(sub) sub.textContent = dlT('path.speakSub') + (speakTarget.title ? ' · ' + speakTarget.title : '');
+    // Talk with AI / Let's Talk weren't reachable from this page at all
+    // before — surface them as secondary links under the main card so
+    // this "daily habit" hero doesn't just funnel into the solo drill
+    const chatLink = document.getElementById('speakHeroChatLink');
+    const hwLink = document.getElementById('speakHeroHwLink');
+    if(chatLink) chatLink.href = 'lesson?id='+encodeURIComponent(speakTarget.id)+'&mode=practice&sub=chat';
+    if(hwLink) hwLink.href = 'lesson?id='+encodeURIComponent(speakTarget.id)+'&step=talk';
+    const more = document.getElementById('speakHeroMore');
+    if(more) more.style.display = 'flex';
+  }
+
+  let n = 0;
+  const html = groups.map(g=>{
+    const gdone = g.items.filter(x=>stateOf(x.id)==='done').length;
+    const gpartial = g.items.filter(x=>stateOf(x.id)==='in_progress').length;
+    const rows = g.items.map(it=>{
+      n++;
+      const state = stateOf(it.id);
+      const checkContent = state==='done' ? '✓' : (state==='in_progress' ? '◐' : n);
+      const checkTitle = state==='done' ? 'Mark not done' : 'Mark done';
+      return `<a class="path-lesson ${state}" href="lesson?id=${encodeURIComponent(it.id)}">
+        <span class="pl-check" onclick="toggleDone(event,'${it.id}')" title="${checkTitle}">${checkContent}</span>
+        <span class="pl-icon">${it.image?`<img loading="lazy" src="${esc(it.image)}" alt="">`:(it.icon||'📄')}</span>
+        <span class="pl-main"><span class="pl-title">${esc(it.title)}</span>
+          <span class="pl-sum">${esc(it.summary||'')}</span></span>
+      </a>`;
+    }).join('');
+    return `<section class="path-level" id="lvl-${g.lv.key}">
+      <div class="path-level-head">
+        <h2>${esc(g.lv.label)}</h2>
+        <span class="path-level-prog">${gdone}/${g.items.length}${gpartial?` <span class="path-level-partial">+${gpartial} in progress</span>`:''}</span>
+      </div>
+      <div class="path-list">${rows}</div>
+    </section>`;
+  }).join('');
+  document.getElementById('pathWrap').innerHTML = html;
+
+  // jump straight to the student's starting level on first load, so
+  // they land on lessons meant for them instead of scrolling past
+  // easier levels first
+  if (!SCROLLED_TO_START && startIdx > 0) {
+    SCROLLED_TO_START = true;
+    const target = document.getElementById('lvl-'+startLevel);
+    if (target) target.scrollIntoView({ block: 'start' });
+  }
+}
+
+/* "Active Lessons" — the up-to-5 lessons a teacher set as live for this
+   student (see teacher.html's Active Lessons panel). Signed-out or independent
+   (non-class) students just never have a plan, so the strip stays hidden. */
+async function renderActivePlan(){
+  if(typeof dlReadToken !== 'function') return;
+  const token = dlReadToken();
+  if(!token) return;
+  let planIds = [];
+  try{
+    const r = await fetch('/api/save-profile?myPlan=1', { headers:{ Authorization:'Bearer '+token } });
+    if(r.ok){ const j = await r.json(); planIds = j.plan || []; }
+  }catch(e){ return; }
+  if(!planIds.length) return;
+  const items = planIds.map(id => ALL.find(x=>x.id===id)).filter(Boolean);
+  if(!items.length) return;
+  const box = document.getElementById('activePlan');
+  box.innerHTML = `<div class="active-plan-h">📋 Active Lessons — picked for you</div>
+    <div class="active-plan-row">${items.map(L=>`
+      <a class="active-plan-card" href="lesson?id=${encodeURIComponent(L.id)}">
+        <span class="apc-icon">${L.image?`<img loading="lazy" src="${esc(L.image)}" alt="">`:(L.icon||'📄')}</span>
+        <span class="apc-title">${esc(L.title)}</span>
+      </a>`).join('')}</div>`;
+  box.style.display = 'block';
+}
+
+let SCROLLED_TO_START = false;
+load().then(renderActivePlan);
+const prevLangHook = window.dlOnLangChange;
+window.dlOnLangChange = (lang) => { render(); if (prevLangHook) prevLangHook(lang); };
+
+// Bible topic is visible by default — only hidden once a signed-in user's
+// explicit hideBibleTopic preference resolves true. Path itself stays open
+// to everyone, browse-first like Library; each lesson link is gated
+// individually by lesson.html's existing free-sample/trial/Bible check.
+(async function(){
+  try{
+    if(typeof dlCheckAccess !== 'function') return;
+    const acc = await dlCheckAccess();
+    if(acc && acc.hideBibleTopic){ SHOW_BIBLE = false; }
+    if(acc && dlIsOwnerEmail(acc.email) && localStorage.getItem('dl_owner_preview')==='1'){ window.DL_OWNER_PREVIEW = true; }
+    PROFILE_LEVEL = (acc && acc.level) || null;
+    ACTIVE_LEVEL = resolveActiveLevel(PROFILE_LEVEL);
+    if(ALL.length) render();
+  }catch(e){}
+})();
+
+// Real (server-computed) progress for a logged-in student — the source of
+// truth a teacher's dashboard also reads (see api/save-profile.js's
+// ?progress=1). Fetched once and merged over localStorage in
+// progressStateFor(); guests/logged-out visitors just keep the local-only
+// view, same as before this feature existed.
+(async function(){
+  try{
+    const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+    if(!token) return;
+    const r = await fetch('/api/save-profile?progress=1', { headers:{ Authorization:'Bearer '+token } });
+    if(!r.ok) return;
+    const j = await r.json();
+    SERVER_PROGRESS = j.progress || {};
+    ACTIVE_LEVEL = resolveActiveLevel(PROFILE_LEVEL);
+    if(ALL.length) render();
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

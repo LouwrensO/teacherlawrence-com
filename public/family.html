@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My family — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .fam{max-width:640px;margin:40px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;}
+  .fam h1{font-family:'Arial Black',sans-serif;font-size:26px;color:var(--ink);margin-bottom:8px;}
+  .fam p.sub{color:var(--muted);margin-bottom:24px;line-height:1.5;}
+  .fam .card{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 6px 18px rgba(30,40,90,.05);}
+  .fam .card h2{font-size:18px;margin:0 0 14px;color:var(--ink);}
+  .fam label{display:block;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:12px 0 5px;}
+  .fam input,.fam select{width:100%;font-size:15px;padding:11px;border-radius:10px;border:1px solid var(--grid);background:#fff;}
+  .fam .hint{font-size:12px;color:var(--muted);margin-top:4px;}
+  .fam .go{width:100%;margin-top:18px;font-size:16px;font-weight:800;padding:13px;border-radius:24px;border:none;background:var(--accent);color:#fff;cursor:pointer;}
+  .fam .go:disabled{opacity:.6;cursor:wait;}
+  .fam .msg{margin-top:12px;font-size:14px;min-height:18px;}
+  .fam .msg.err{color:#c0392b;} .fam .msg.ok{color:var(--accent2,#2ca06a);}
+  .fam .kid{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--rule);}
+  .fam .kid:first-child{border-top:none;}
+  .fam .kid .who{flex:1;min-width:0;}
+  .fam .kid .who b{display:block;font-size:16px;color:var(--ink);}
+  .fam .kid .who small{color:var(--muted);font-size:13px;}
+  .fam .kid button{font-size:13px;font-weight:700;padding:7px 12px;border-radius:18px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .fam .kid button.danger{color:#c0392b;border-color:#e6b8b2;}
+  .fam .login-note{font-size:13px;color:var(--muted);background:var(--soft,#f2f4ff);border-radius:12px;padding:12px 14px;margin-top:6px;}
+  .fam .none{color:var(--muted);font-size:14px;padding:6px 0;}
+  .fam .game-card{display:flex;flex-direction:row;align-items:center;gap:16px;text-align:left;text-decoration:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+    border:none;box-shadow:0 8px 22px rgba(91,110,240,.28);}
+  .fam .game-card .game-emoji{font-size:34px;line-height:1;flex:none;}
+  .fam .game-card .game-text{flex:1;min-width:0;}
+  .fam .game-card .game-text b{display:block;font-size:17px;margin-bottom:3px;}
+  .fam .game-card .game-text small{display:block;font-size:13px;line-height:1.45;color:rgba(255,255,255,.9);}
+  .fam .game-card .game-go{flex:none;font-size:14px;font-weight:800;padding:9px 16px;border-radius:20px;
+    background:rgba(255,255,255,.18);white-space:nowrap;}
+  @media(max-width:460px){.fam .game-card{flex-wrap:wrap;}.fam .game-card .game-go{width:100%;text-align:center;}}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+    <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="token.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="fam">
+    <h1 data-i18n="family.title">My family</h1>
+    <p class="sub" data-i18n="family.subtitle">Add each child their own login. Older kids can use their own email; little ones just get a username and a PIN — no email needed. Everyone keeps their own level and progress.</p>
+
+    <!-- not logged in -->
+    <div id="needLogin" class="card hidden">
+      <p style="margin:0 0 12px" data-i18n="family.needLogin">Please log in to manage your family.</p>
+      <a class="go" style="display:inline-block;width:auto;padding:12px 22px;text-decoration:none" href="/login?next=/family" data-i18n="family.loginLink">Log in →</a>
+    </div>
+
+    <div id="panel" class="hidden">
+      <!-- play games -->
+      <a class="card game-card" href="/games">
+        <span class="game-emoji">🎮</span>
+        <span class="game-text">
+          <b data-i18n="family.gamesTitle">Play vocabulary games</b>
+          <small data-i18n="family.gamesBody">Turn any lesson into a memory, match-up or scramble game — a fun way to practise together.</small>
+        </span>
+        <span class="game-go" data-i18n="family.gamesBtn">Play →</span>
+      </a>
+
+      <!-- add a child -->
+      <div class="card">
+        <h2 data-i18n="family.addTitle">Add a child</h2>
+        <label data-i18n="family.name">Child's name</label>
+        <input type="text" id="cName" maxlength="40" autocomplete="off">
+        <label data-i18n="family.username">Username</label>
+        <input type="text" id="cUser" autocapitalize="none" autocomplete="off" placeholder="minjun2017">
+        <div class="hint" data-i18n="family.usernameHint">Letters and numbers, e.g. minjun2017 — this is what they type to log in.</div>
+        <label data-i18n="family.pin">PIN</label>
+        <input type="text" id="cPin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="1234">
+        <div class="hint" data-i18n="family.pinHint">4–6 digits your child can remember.</div>
+        <label data-i18n="family.level">Starting level</label>
+        <select id="cLevel"></select>
+        <button class="go" id="addBtn" onclick="addChild()" data-i18n="family.addBtn">Add child</button>
+        <div class="msg" id="msg"></div>
+      </div>
+
+      <!-- children list -->
+      <div class="card">
+        <h2 data-i18n="family.yourChildren">Your children</h2>
+        <div id="kids"></div>
+        <div class="login-note" data-i18n="family.loginNote">Your children log in on the Log in page with their username and PIN — no email needed.</div>
+      </div>
+    </div>
+  </div>
+
+<script src="lessons.js"></script>
+<script>
+  function headers(){ return { 'Content-Type':'application/json', Authorization:'Bearer '+dlReadToken() }; }
+  function setMsg(t,cls){ const m=document.getElementById('msg'); m.textContent=t||''; m.className='msg '+(cls||''); }
+
+  // fill the starting-level dropdown from the lesson data
+  function buildLevels(){
+    const sel = document.getElementById('cLevel');
+    if (typeof LEVELS !== 'undefined' && LEVELS.length){
+      sel.innerHTML = LEVELS.map(l=>`<option value="${l.key}">${l.label||l.key}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="beginner">Beginner</option>';
+    }
+  }
+
+  function kidRow(c){
+    const div = document.createElement('div');
+    div.className = 'kid';
+    div.innerHTML =
+      `<div class="who"><b></b><small></small></div>` +
+      `<button type="button" class="reset">${dlT('family.resetPin')}</button>` +
+      `<button type="button" class="danger remove">${dlT('family.remove')}</button>`;
+    const nm = c.name || c.username || '';
+    div.querySelector('b').textContent = nm ? nm.charAt(0).toUpperCase() + nm.slice(1) : nm;
+    div.querySelector('small').textContent = '@' + c.username + (c.level ? ' · ' + c.level : '');
+    div.querySelector('.reset').onclick = ()=>resetPin(c);
+    div.querySelector('.remove').onclick = ()=>removeChild(c);
+    return div;
+  }
+
+  async function loadChildren(){
+    try{
+      const r = await fetch('/api/save-profile?children=1', { headers: headers() });
+      const j = await r.json();
+      const box = document.getElementById('kids');
+      box.innerHTML = '';
+      const list = (j && j.children) || [];
+      if(!list.length){ const d=document.createElement('div'); d.className='none'; d.textContent=dlT('family.none'); box.appendChild(d); return; }
+      list.forEach(c=>box.appendChild(kidRow(c)));
+    }catch(e){}
+  }
+
+  async function addChild(){
+    const name = document.getElementById('cName').value.trim();
+    const username = document.getElementById('cUser').value.trim().toLowerCase();
+    const pin = document.getElementById('cPin').value.trim();
+    const level = document.getElementById('cLevel').value;
+    if(!name || !username || !pin){ setMsg(dlT('family.needBoth')||'Please fill in name, username and PIN.', 'err'); return; }
+    const btn = document.getElementById('addBtn'); btn.disabled = true; setMsg(dlT('family.saving'),'');
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ createChild:{ name, username, pin, level } }) });
+      const j = await r.json();
+      if(!r.ok){ setMsg(j.error || dlT('login.somethingWrong'), 'err'); btn.disabled=false; return; }
+      setMsg('✓ ' + (j.child && j.child.name ? j.child.name : name), 'ok');
+      document.getElementById('cName').value=''; document.getElementById('cUser').value=''; document.getElementById('cPin').value='';
+      loadChildren();
+    }catch(e){ setMsg(dlT('login.somethingWrong'),'err'); }
+    finally{ btn.disabled = false; }
+  }
+
+  async function resetPin(c){
+    const pin = prompt(dlT('family.newPinPrompt'));
+    if(pin==null) return;
+    const p = String(pin).trim();
+    if(!/^\d{4,6}$/.test(p)){ alert(dlT('family.pinHint')); return; }
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ setChildPin:{ childId:c.id, pin:p } }) });
+      const j = await r.json();
+      setMsg(r.ok ? dlT('family.pinReset') : (j.error||''), r.ok?'ok':'err');
+    }catch(e){}
+  }
+
+  async function removeChild(c){
+    if(!confirm(dlT('family.removeConfirm'))) return;
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers:headers(), body: JSON.stringify({ removeChild:{ childId:c.id } }) });
+      if(r.ok) loadChildren();
+    }catch(e){}
+  }
+
+  // gate on login (best-effort; the API is the real guard)
+  (function init(){
+    buildLevels();
+    const hasToken = (typeof dlReadToken==='function') && dlReadToken();
+    document.getElementById('needLogin').classList.toggle('hidden', !!hasToken);
+    document.getElementById('panel').classList.toggle('hidden', !hasToken);
+    if(hasToken) loadChildren();
+    // re-apply translations after any language switch
+    const prev = window.dlOnLangChange;
+    window.dlOnLangChange = (lang)=>{ if(typeof dlApplyI18n==='function') dlApplyI18n(); loadChildren(); if(prev) prev(lang); };
+  })();
+</script>
+</body>
+</html>

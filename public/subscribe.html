@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Premium — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .sub{max-width:460px;margin:50px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;text-align:center;}
+  .sub .pricecard{background:#fff;border:2px solid var(--accent);border-radius:20px;padding:30px 26px;box-shadow:0 14px 34px rgba(91,110,240,.14);}
+  .sub h1{font-family:'Arial Black',sans-serif;font-size:28px;color:var(--ink);margin-bottom:6px;}
+  .sub .price{font-family:'Arial Black',sans-serif;font-size:44px;color:var(--accent);margin:10px 0 2px;}
+  .sub .price small{font-size:16px;color:var(--muted);font-weight:400;}
+  .sub ul{list-style:none;text-align:left;margin:18px auto;max-width:300px;}
+  .sub li{padding:8px 0 8px 30px;position:relative;font-size:15px;color:var(--ink);}
+  .sub li::before{content:'✓';position:absolute;left:0;color:var(--accent2);font-weight:900;}
+  .sub .go{width:100%;margin-top:14px;font-size:17px;font-weight:800;padding:15px;border-radius:28px;border:none;background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(91,110,240,.25);}
+  .sub .go:disabled{opacity:.6;cursor:wait;}
+  .sub .fine{color:var(--muted);font-size:12px;margin-top:14px;}
+  .sub .msg{margin-top:12px;color:#c0392b;font-size:14px;min-height:18px;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script type="module" src="account.js"></script>
+  <script src="token.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="sub">
+    <div class="pricecard">
+      <h1 data-i18n="sub.unlockEverything">Unlock everything</h1>
+      <div class="price">₩10,000<small data-i18n="sub.perMonth"> / month</small></div>
+      <ul>
+        <li data-i18n="sub.featureAll">Every lesson, every level</li>
+        <li data-i18n="sub.featurePath">The full guided learning Path</li>
+        <li data-i18n="sub.featureKorean">Korean line-by-line translations</li>
+        <li data-i18n="sub.featureAudio">Listen-along audio on every lesson</li>
+        <li data-i18n="sub.featureCancel">Cancel anytime</li>
+      </ul>
+      <button class="go" id="goBtn" onclick="startCheckout()" data-i18n="sub.subscribeBtn">Subscribe — ₩10,000/month →</button>
+      <div class="msg" id="msg"></div>
+      <div class="fine" data-i18n="sub.fine">Secure payment by Stripe. You can cancel whenever you like.</div>
+    </div>
+  </div>
+
+<script>
+  // window.startCheckout is defined IMMEDIATELY, synchronously, in a plain
+  // (non-module) script that reads the login token straight from
+  // localStorage (token.js) — no external CDN in the critical path, so
+  // the button always works even when a JS-library CDN is slow.
+  function withTimeout(promise, ms, msg) {
+    return Promise.race([
+      promise,
+      new Promise((_, rej) => setTimeout(() => rej(new Error(msg || 'timed out')), ms))
+    ]);
+  }
+
+  window.startCheckout = async function () {
+    const btn = document.getElementById('goBtn');
+    const msg = document.getElementById('msg');
+    btn.disabled = true; msg.textContent = '';
+    try {
+      const token = dlReadToken();
+      if (!token) { location.href = '/login'; return; }
+      const r = await withTimeout(
+        fetch('/api/checkout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
+        10000, 'The payment service is taking too long. Please try again.'
+      );
+      const j = await r.json();
+      if (j.url) { location.href = j.url; }
+      else { msg.textContent = j.error || 'Could not start checkout.'; btn.disabled = false; }
+    } catch (e) {
+      msg.textContent = e.message || 'Something went wrong. Please try again.';
+      btn.disabled = false;
+    }
+  };
+
+  let PAGE_STATE = null; // 'member' | 'trial' | null
+
+  function renderMsg() {
+    const msg = document.getElementById('msg');
+    if (PAGE_STATE === 'member') {
+      msg.textContent = dlT('sub.alreadyMember');
+    } else if (PAGE_STATE && PAGE_STATE.trial) {
+      msg.textContent = dlT('sub.trialActive').replace('{days}', PAGE_STATE.days);
+    }
+  }
+
+  // best-effort: check if already logged in / already subscribed, so we
+  // can adjust the page. Failure here must NOT block the Subscribe button.
+  (async () => {
+    try {
+      const acc = await withTimeout(dlCheckAccess(), 5000);
+      if (!acc.loggedIn) { location.href = '/login'; return; }
+      if (acc.subscribed && !acc.trialing) {
+        PAGE_STATE = 'member';
+        const btn = document.getElementById('goBtn');
+        btn.textContent = dlT('sub.goToPath');
+        btn.removeAttribute('data-i18n');
+        btn.onclick = () => location.href = '/path';
+        renderMsg();
+      } else if (acc.trialing) {
+        const days = Math.max(1, Math.ceil((new Date(acc.trialEndsAt) - Date.now()) / 86400000));
+        PAGE_STATE = { trial: true, days };
+        renderMsg();
+      }
+    } catch (e) { console.error('Pre-check failed:', e); }
+  })();
+
+  const prevLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => {
+    const btn = document.getElementById('goBtn');
+    if (PAGE_STATE === 'member' && !btn.hasAttribute('data-i18n')) btn.textContent = dlT('sub.goToPath');
+    renderMsg();
+    if (prevLangHook) prevLangHook(lang);
+  };
+</script>
+</body>
+</html>

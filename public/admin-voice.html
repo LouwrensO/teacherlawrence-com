@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google AI Voice Access — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .admin{max-width:900px;margin:34px auto;padding:0 18px;font-family:Helvetica,Arial,sans-serif;}
+  .admin h1{font-family:'Arial Black',sans-serif;font-size:26px;color:var(--ink);margin-bottom:4px;}
+  .admin .sub{color:var(--muted);margin-bottom:22px;font-size:14px;line-height:1.5;}
+  .admin .msg{color:var(--muted);padding:40px 0;text-align:center;}
+  .crumbs{font-size:13px;color:var(--muted);margin-bottom:14px;}
+  .crumbs a{color:var(--accent);cursor:pointer;font-weight:700;text-decoration:none;}
+  .search{width:100%;box-sizing:border-box;padding:10px 14px;font-size:14px;border:1px solid var(--rule);
+    border-radius:20px;margin-bottom:16px;font-family:inherit;}
+  .tbl-wrap{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:14px;}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px;}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--rule);}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:#fafbfc;white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.who .nm{font-weight:700;color:var(--ink);}
+  td.who .em{color:var(--muted);font-size:12px;word-break:break-word;}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;}
+  .pill.on{background:#e4f6ea;color:#1c8a4b;}
+  .pill.off{background:#eceef3;color:var(--muted);}
+  .toggle{font-size:13px;font-weight:700;padding:8px 16px;border-radius:20px;border:1px solid var(--grid);
+    background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .toggle.grant{border-color:var(--accent);color:var(--accent);}
+  .toggle.revoke{border-color:#e6b8b2;color:#c0392b;}
+  .toggle:disabled{opacity:.5;cursor:default;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <a class="nav-link" href="/admin">Students</a>
+  </div></div>
+  <script src="token.js"></script>
+  <script type="module" src="account.js"></script>
+
+  <div class="admin">
+    <p class="crumbs"><a href="/admin">← All students</a></p>
+    <h1>🎙️ Google AI Voice Access</h1>
+    <p class="sub">Grant or revoke access to "Live Voice (Beta)" — free, no payment needed. This is a
+      test-phase feature (Gemini Live's free tier), so access is limited to students you pick here.</p>
+    <input class="search" id="search" type="text" placeholder="Search by name or email…" oninput="render()">
+    <div id="body"><div class="msg">Loading…</div></div>
+  </div>
+
+<script>
+  let DATA = null;
+
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function render(){
+    if(!DATA) return;
+    const q = (document.getElementById('search').value || '').trim().toLowerCase();
+    const rows = DATA.students.filter(x =>
+      !q || (x.name||'').toLowerCase().includes(q) || (x.email||'').toLowerCase().includes(q)
+    );
+    const body = document.getElementById('body');
+    if(!rows.length){ body.innerHTML = `<div class="msg">No students match.</div>`; return; }
+    body.innerHTML = `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Student</th>
+        <th>Voice Access</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${rows.map(x => `<tr>
+        <td class="who"><div class="nm">${esc(x.name || (x.email||'').split('@')[0])}</div><div class="em">${esc(x.email)}</div></td>
+        <td><span class="pill ${x.liveVoiceAccess?'on':'off'}">${x.liveVoiceAccess?'Granted':'Not granted'}</span></td>
+        <td style="text-align:right;">
+          <button class="toggle ${x.liveVoiceAccess?'revoke':'grant'}" data-id="${x.id}"
+            onclick="toggleAccess('${x.id}', ${!x.liveVoiceAccess})">${x.liveVoiceAccess?'Revoke':'Grant access'}</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  function authHeaders(){ return { 'Content-Type':'application/json', Authorization:'Bearer '+dlReadToken() }; }
+
+  window.toggleAccess = async (id, enabled) => {
+    const btns = document.querySelectorAll(`button[data-id="${id}"]`);
+    btns.forEach(b => b.disabled = true);
+    try{
+      const r = await fetch('/api/save-profile', {
+        method:'POST', headers: authHeaders(),
+        body: JSON.stringify({ adminSetLiveVoice:{ userId:id, enabled } })
+      });
+      if(r.ok){
+        const s = DATA.students.find(x => x.id === id);
+        if(s) s.liveVoiceAccess = enabled;
+        render();
+      } else {
+        alert('Could not update access.');
+        btns.forEach(b => b.disabled = false);
+      }
+    }catch(e){
+      alert('Could not update access.');
+      btns.forEach(b => b.disabled = false);
+    }
+  };
+
+  async function load(){
+    const body = document.getElementById('body');
+    const token = (typeof dlReadToken==='function') ? dlReadToken() : null;
+    if(!token){ body.innerHTML = `<div class="msg">Log in as the site owner to see this page.</div>`; return; }
+    try{
+      const r = await fetch('/api/save-profile?admin=1', { headers:{ Authorization:'Bearer '+token } });
+      if(r.status === 403){ body.innerHTML = `<div class="msg">Not authorized.</div>`; return; }
+      if(!r.ok){ body.innerHTML = `<div class="msg">Could not load students.</div>`; return; }
+      DATA = await r.json();
+      render();
+    }catch(e){
+      body.innerHTML = `<div class="msg">Could not load students.</div>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join your class — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .join{max-width:440px;margin:60px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;text-align:center;}
+  .join .ico{font-size:52px;}
+  .join h1{font-family:'Arial Black',sans-serif;font-size:26px;color:var(--ink);margin:10px 0 6px;}
+  .join p{color:var(--muted);margin-bottom:8px;line-height:1.5;}
+  .join .code{font-family:'Arial Black',sans-serif;font-size:30px;letter-spacing:6px;color:var(--accent);margin:14px 0 22px;}
+  .join .go{display:inline-block;width:100%;font-size:16px;font-weight:800;padding:14px;border-radius:26px;border:none;
+    background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;box-shadow:0 8px 20px rgba(91,110,240,.25);}
+  .join .alt{display:block;margin-top:14px;font-size:14px;color:var(--muted);text-decoration:none;font-weight:700;}
+  .join .alt:hover{color:var(--accent);}
+  .join .msg{margin-top:14px;font-size:14px;min-height:20px;}
+  .join .msg.err{color:#c0392b;} .join .msg.ok{color:var(--accent2);}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="token.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="join" id="join">
+    <div class="ico">🎒</div>
+    <h1>Join your class</h1>
+    <p>You've been invited to a class on Teacher Lawrence.</p>
+    <div class="code" id="codeShow">––––––</div>
+    <div id="action"><div class="msg">Loading…</div></div>
+  </div>
+
+<script>
+  const code = (new URLSearchParams(location.search).get('code') || '').trim().toUpperCase();
+  document.getElementById('codeShow').textContent = code || '––––––';
+  const action = document.getElementById('action');
+  function setMsg(t,cls){ action.innerHTML = `<div class="msg ${cls||''}">${t}</div>`; }
+
+  async function joinNow(){
+    const token = dlReadToken();
+    try{
+      const r = await fetch('/api/save-profile', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+        body: JSON.stringify({ joinClass:{ code } })
+      });
+      const j = await r.json();
+      if(!r.ok){ setMsg((j.error||'Could not join that class.'), 'err'); return; }
+      try{ localStorage.setItem('dl_role','student'); localStorage.removeItem('dl_join_class'); }catch(e){}
+      setMsg('🎉 You\'re in' + (j.className? ' — '+j.className : '') + '! Taking you to your lessons…', 'ok');
+      setTimeout(()=> location.href = '/path', 1400);
+    }catch(e){ setMsg('Could not join that class. Please try again.', 'err'); }
+  }
+
+  (function(){
+    if(!code){ setMsg('This link is missing its class code. Ask your teacher for a new link.', 'err'); return; }
+    // remember the code so onboarding after a fresh sign-up can complete the join
+    try{ localStorage.setItem('dl_join_class', code); }catch(e){}
+    if(dlReadToken()){
+      setMsg('Joining…','');
+      joinNow();
+    } else {
+      const next = '/join?code=' + encodeURIComponent(code);
+      action.innerHTML =
+        `<a class="go" href="/login?mode=signup&next=${encodeURIComponent(next)}">Sign up to join →</a>
+         <a class="alt" href="/login?next=${encodeURIComponent(next)}">I already have an account</a>`;
+    }
+  })();
+</script>
+</body>
+</html>

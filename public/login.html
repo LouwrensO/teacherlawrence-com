@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .auth{max-width:400px;margin:50px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;}
+  .auth h1{font-family:'Arial Black',sans-serif;font-size:26px;text-align:center;margin-bottom:6px;color:var(--ink);}
+  .auth p.sub{text-align:center;color:var(--muted);margin-bottom:22px;}
+  .auth .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:20px;}
+  .auth .tabs button{font-size:14px;font-weight:700;padding:9px 18px;border-radius:20px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .auth .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .auth label{display:block;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 0 6px;}
+  .auth input{width:100%;font-size:15px;padding:12px;border-radius:10px;border:1px solid var(--grid);background:#fff;}
+  .auth .pw-wrap{position:relative;}
+  .auth .pw-wrap input{padding-right:64px;}
+  .auth .pw-toggle{position:absolute;top:50%;right:8px;transform:translateY(-50%);background:none;border:none;padding:6px 8px;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;border-radius:8px;}
+  .auth .pw-toggle:hover{background:rgba(91,110,240,.1);}
+  .auth .go{width:100%;margin-top:18px;font-size:16px;font-weight:800;padding:14px;border-radius:26px;border:none;background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(91,110,240,.25);}
+  .auth .go:disabled{opacity:.6;cursor:wait;}
+  .auth .forgot-row{text-align:center;margin-top:12px;}
+  .auth .forgot-row a{font-size:13px;color:var(--muted);text-decoration:none;font-weight:700;}
+  .auth .forgot-row a:hover{color:var(--accent);text-decoration:underline;}
+  .auth .msg{margin-top:16px;text-align:center;font-size:14px;min-height:20px;}
+  .auth .msg.err{color:#c0392b;}
+  .auth .msg.ok{color:var(--accent2);}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="token.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="auth">
+    <h1 data-i18n="login.welcome">Welcome</h1>
+    <p class="sub" data-i18n="login.subtitle">Log in to save your progress across devices.</p>
+    <div class="tabs">
+      <button id="tabLogin" class="on" onclick="setMode('login')" data-i18n="login.tabLogin">Log in</button>
+      <button id="tabSignup" onclick="setMode('signup')" data-i18n="login.tabSignup">Sign up</button>
+    </div>
+    <label id="nameLabel" for="name" style="display:none;" data-i18n="login.name">Name</label>
+    <input type="text" id="name" placeholder="Your name" autocomplete="name" style="display:none;">
+    <label data-i18n="login.emailOrUser">Email or username</label>
+    <input type="text" id="email" placeholder="you@example.com" autocomplete="username">
+    <label data-i18n="login.password">Password</label>
+    <div class="pw-wrap">
+      <input type="password" id="password" data-i18n-placeholder="login.passwordHint" placeholder="at least 6 characters" autocomplete="current-password">
+      <button type="button" class="pw-toggle" id="pwToggle" onclick="togglePassword()" aria-pressed="false" data-i18n-aria-label="login.showPassword" aria-label="Show password" data-i18n="login.show">Show</button>
+    </div>
+    <button class="go" id="goBtn" onclick="submitAuth()">Log in →</button>
+    <div class="forgot-row"><a href="#" id="forgotLink" onclick="sendReset(event)" data-i18n="login.forgot">Forgot password?</a></div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+<script>
+  // Plain (non-module) script: the tab UI / mode state must work
+  // instantly regardless of whether the Supabase CDN import below
+  // succeeds or is slow — a static `import` that hangs/fails would
+  // otherwise block this entire block from ever running (this is the
+  // same class of bug fixed elsewhere on the site: never gate basic
+  // page UI on an external library CDN).
+  const dlLoginParams = new URLSearchParams(location.search);
+  window.__loginNext = dlLoginParams.get('next');
+  window.MODE = dlLoginParams.get('mode') === 'signup' ? 'signup' : 'login';
+
+  window.afterAuth = async function () {
+    // remember which user is active on this device, so per-child progress
+    // (dl_done_<uid>) doesn't mix between siblings sharing one phone/tablet
+    try { const { data: { user } } = await window.supabase.auth.getUser(); if (user) localStorage.setItem('dl_uid', user.id); } catch (e) {}
+    // The account itself remembers role/level (set via /api/save-profile
+    // during onboarding), so a returning user is recognized even after
+    // logging out clears localStorage — check the account before ever
+    // asking "teacher or student?" again.
+    try {
+      const acc = await dlCheckAccess();
+      if (acc.role) {
+        localStorage.setItem('dl_role', acc.role);
+        if (acc.level) localStorage.setItem('dl_level', acc.level);
+        location.href = window.__loginNext || '/path';
+        return;
+      }
+    } catch (e) {}
+    // No role on the account yet — this is genuinely a first-time user.
+    // Stash where they actually wanted to go so onboarding can send them
+    // there once a role is set.
+    if (window.__loginNext) localStorage.setItem('dl_next', window.__loginNext);
+    location.href = '/onboard';
+  };
+  window.togglePassword = function () {
+    const inp = document.getElementById('password');
+    const btn = document.getElementById('pwToggle');
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', String(show));
+    // Keep the data-i18n keys in sync so a later language switch (which
+    // re-runs dlApplyI18n) preserves the current show/hide state.
+    btn.setAttribute('data-i18n', show ? 'login.hide' : 'login.show');
+    btn.setAttribute('data-i18n-aria-label', show ? 'login.hidePassword' : 'login.showPassword');
+    btn.textContent = dlT(show ? 'login.hide' : 'login.show');
+    btn.setAttribute('aria-label', dlT(show ? 'login.hidePassword' : 'login.showPassword'));
+    inp.focus();
+  };
+  window.setMsg = function (t, cls) {
+    const m = document.getElementById('msg'); m.textContent = t || ''; m.className = 'msg ' + (cls || '');
+  };
+  window.setMode = function (m) {
+    window.MODE = m;
+    document.getElementById('tabLogin').classList.toggle('on', m==='login');
+    document.getElementById('tabSignup').classList.toggle('on', m==='signup');
+    document.getElementById('goBtn').textContent = dlT(m==='login' ? 'login.goLogin' : 'login.goSignup');
+    document.getElementById('password').setAttribute('autocomplete', m==='login'?'current-password':'new-password');
+    document.getElementById('nameLabel').style.display = m==='signup' ? '' : 'none';
+    document.getElementById('name').style.display = m==='signup' ? '' : 'none';
+    setMsg('');
+  };
+  window.setMode(window.MODE); // set the initial tab/button from the URL, or default to login
+
+  const prevLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => { setMode(window.MODE); if (prevLangHook) prevLangHook(lang); };
+</script>
+<script type="module" src="account.js"></script>
+<script type="module">
+  import { supabase } from './account.js';
+
+  // if already logged in, continue on (best-effort, non-blocking)
+  supabase.auth.getUser().then(({ data: { user } }) => { if (user) afterAuth(); }).catch(() => {});
+
+  window.sendReset = async (e) => {
+    if (e) e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    if (!email) { setMsg(dlT('login.resetNeedEmail'), 'err'); document.getElementById('email').focus(); return; }
+    setMsg(dlT('login.resetSending'), '');
+    try {
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/reset' });
+    } catch (_) { /* fall through — we don't reveal whether the email exists */ }
+    // Always show the same neutral confirmation (avoid leaking which
+    // emails have accounts).
+    setMsg(dlT('login.resetSent'), 'ok');
+  };
+
+  window.submitAuth = async () => {
+    const raw = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!raw || !password) { setMsg(dlT('login.needBoth'), 'err'); return; }
+    // A child logs in with just a username (no "@") — map it to their
+    // hidden kids address so Supabase can sign them in normally.
+    const isEmail = raw.includes('@');
+    const email = isEmail ? raw : (raw.toLowerCase() + '@kids.teacherlawrence.com');
+    const btn = document.getElementById('goBtn'); btn.disabled = true;
+    try {
+      if (window.MODE === 'signup') {
+        // public sign-up is for adults/older kids with a real email; small
+        // kids are created by a parent on /family, not here.
+        if (!isEmail) { setMsg(dlT('login.signupNeedsEmail'), 'err'); btn.disabled = false; return; }
+        const name = document.getElementById('name').value.trim();
+        if (!name) { setMsg(dlT('login.signupNeedsName'), 'err'); btn.disabled = false; return; }
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+        if (error) throw error;
+        if (data.session) { afterAuth(); }
+        else { setMsg(dlT('login.checkEmail'), 'ok'); setMode('login'); }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        afterAuth();
+      }
+    } catch (e) {
+      setMsg(e.message || dlT('login.somethingWrong'), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  };
+</script>
+</body>
+</html>

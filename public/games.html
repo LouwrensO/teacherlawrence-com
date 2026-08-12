@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Games — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  /* Games page — self-contained styles, reusing the site's colour vars. */
+  .games-wrap{max-width:900px;margin:18px auto 60px;padding:0 20px;font-family:Helvetica,Arial,sans-serif;}
+  .games-head{text-align:center;margin:8px 0 18px;}
+  .games-head h1{font-size:clamp(24px,4vw,32px);font-weight:800;margin:0 0 6px;}
+  .games-head p{margin:0;color:var(--muted);font-size:15px;}
+  .games-picker{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:0 0 16px;}
+  .games-picker label{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  #lessonSelect{font-family:inherit;font-size:15px;font-weight:600;padding:9px 12px;border-radius:12px;
+    border:1px solid var(--grid);background:#fff;color:#222;max-width:100%;}
+  .games-tabs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 12px;}
+  .games-tab{font-family:inherit;font-size:14px;font-weight:700;padding:9px 16px;border-radius:20px;
+    border:1px solid var(--grid);background:#fff;color:var(--muted);cursor:pointer;}
+  .games-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .games-modes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 18px;min-height:4px;}
+  .games-mode{font-family:inherit;font-size:13px;font-weight:700;padding:7px 14px;border-radius:18px;
+    border:1px solid var(--grid);background:var(--soft);color:var(--accent);cursor:pointer;}
+  .games-mode.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .games-stage{min-height:200px;}
+  .games-empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:16px;}
+
+  /* The shared game-piece styles (.dlg-*) live in style.css so the same
+     games render identically here and inside the in-lesson Games step. */
+</style>
+</head>
+<body>
+
+  <!-- top nav (same as the rest of the site) -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+    <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+    <a class="nav-link cta" href="/create" data-i18n="nav.createOwn">Create your own</a>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="games-wrap">
+    <div class="games-head">
+      <h1 data-i18n="games.title">🎮 Vocabulary Games</h1>
+      <p data-i18n="games.subtitle">Pick a lesson and play — the games build themselves from that lesson's words.</p>
+    </div>
+
+    <div class="games-picker">
+      <label for="lessonSelect" data-i18n="games.lessonLabel">Lesson</label>
+      <select id="lessonSelect"><option value="" data-i18n="games.loadingLessons">Loading lessons…</option></select>
+    </div>
+
+    <div id="gameTimer"></div>
+    <div class="games-tabs" id="gameTabs" style="display:none;">
+      <button class="games-tab" data-game="memory" data-i18n="games.tabMemory">🧠 Memory</button>
+      <button class="games-tab" data-game="scramble" data-i18n="games.tabScramble">🔤 Scramble</button>
+      <button class="games-tab" data-game="match" data-i18n="games.tabMatch">🎯 Match-Up</button>
+    </div>
+    <div class="games-modes" id="gameModes"></div>
+
+    <div class="games-stage" id="gameStage">
+      <div class="games-empty" id="gameEmpty" data-i18n="games.pickPrompt">Choose a lesson above to start playing.</div>
+    </div>
+  </div>
+
+  <script src="token.js"></script>
+  <script src="lessons.js"></script>
+  <script src="practice.js"></script>
+  <script src="games.js"></script>
+  <script>
+  (function () {
+    const qs = new URLSearchParams(location.search);
+    let curId   = qs.get('id') || '';
+    let curGame = qs.get('game') || 'memory';
+    let curMode = '';
+    let curInfo = null;      // { items, hasEmoji, hasKo, hasMeaning }
+    let curModes = [];
+    let curLesson = null;
+    let metaList = [];       // cached lesson list, used to work out which lessons are free
+    let ACC = { loggedIn: false, subscribed: false }; // resolved once at boot
+
+    const sel   = document.getElementById('lessonSelect');
+    const tabs  = document.getElementById('gameTabs');
+    const modes = document.getElementById('gameModes');
+    const stage = document.getElementById('gameStage');
+    const empty = document.getElementById('gameEmpty');
+    const timer = document.getElementById('gameTimer');
+
+    // localize the game-tab labels once i18n is present
+    if (typeof dlApplyI18n === 'function') dlApplyI18n();
+
+    /* ---- populate the lesson dropdown ---- */
+    async function loadLessonList() {
+      let list = [];
+      try {
+        const cached = sessionStorage.getItem('dl_lessons_meta');
+        if (cached) list = JSON.parse(cached);
+      } catch (e) {}
+      if (!list.length) {
+        try {
+          const r = await fetch('/api/lessons?meta=1');
+          if (r.ok) { list = await r.json(); try { sessionStorage.setItem('dl_lessons_meta', JSON.stringify(list)); } catch (_) {} }
+        } catch (e) {}
+      }
+      if (!list.length && window.LESSONS) list = window.LESSONS;
+      if (!list.length) { sel.innerHTML = '<option value="">—</option>'; return; }
+
+      const LEVEL_ORDER = ["phonics","beginner","elementary","pre-int","intermediate","upper","advanced","super"];
+      list.sort(function (a, b) {
+        return (LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level))
+          || ((a.seq ?? 999) - (b.seq ?? 999))
+          || (a.title > b.title ? 1 : -1);
+      });
+      metaList = list;
+      const opts = ['<option value="">' + esc(dlT('games.choose') || 'Choose a lesson…') + '</option>'];
+      list.forEach(function (L) {
+        opts.push('<option value="' + esc(L.id) + '"' + (L.id === curId ? ' selected' : '') + '>' + esc(L.title) + '</option>');
+      });
+      sel.innerHTML = opts.join('');
+    }
+
+    /* ---- can the current visitor actually play this lesson's games? ----
+       Browsing the picker/dropdown stays open to everyone (it's just a
+       list of titles); loading a lesson's actual content into a game is
+       gated the same way lesson.html gates reading it: fully-free levels
+       and one sample lesson per level are open, everything else needs a
+       trial/subscription. */
+    function lessonAllowed(lesson) {
+      return dlIsLessonFree(metaList, lesson) || ACC.subscribed;
+    }
+    function showPaywall() {
+      DLGames.endTimer(); timer.innerHTML = '';
+      tabs.style.display = 'none';
+      modes.innerHTML = '';
+      stage.innerHTML = dlPaywallHtml(ACC.loggedIn);
+      empty.style.display = 'none';
+    }
+
+    function esc(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    /* ---- load one lesson (full data + translation) ---- */
+    async function loadLesson(id) {
+      let base = null, translations = {};
+      try {
+        const r = await fetch('/api/lessons?id=' + encodeURIComponent(id));
+        if (r.ok) { const j = await r.json(); base = j.lesson; translations = j.translations || {}; }
+      } catch (e) {}
+      if (!base && window.LESSONS) base = window.LESSONS.find(function (L) { return L.id === id; });
+      if (!base) return null;
+      base.__ko = translations.ko || null;
+
+      // reading lessons with no stored Korean yet: fetch one in the
+      // background so the Korean mode can appear a moment later.
+      if (base.type !== 'flashcards' && !base.__ko) {
+        fetch('/api/translate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: base.id, lang: 'ko' })
+        }).then(function (r) { return r.json(); }).then(function (j) {
+          if (j && j.ok && j.data && curLesson && curLesson.id === base.id) {
+            base.__ko = j.data;
+            onKoArrived(); // reveal Korean mode without restarting the game
+          }
+        }).catch(function () {});
+      }
+      return base;
+    }
+
+    /* ---- render the mode toggle (memory + match; scramble uses any hint) ---- */
+    function renderModeToggle() {
+      if (curGame === 'scramble' || curModes.length < 2) { modes.innerHTML = ''; return; }
+      modes.innerHTML = curModes.map(function (m) {
+        return '<button class="games-mode' + (m === curMode ? ' on' : '') + '" data-mode="' + m + '">' +
+          esc(DLGames.modeLabel(m)) + '</button>';
+      }).join('');
+      modes.querySelectorAll('.games-mode').forEach(function (b) {
+        b.addEventListener('click', function () { curMode = b.dataset.mode; renderModeToggle(); play(); });
+      });
+    }
+
+    /* ---- render the game/mode controls and play ---- */
+    function rebuild() {
+      if (!curLesson) return;
+      curInfo = DLGames.buildItems(curLesson, curLesson.__ko);
+      curModes = DLGames.modesFor(curInfo);
+      if (curModes.indexOf(curMode) < 0) curMode = curModes[0];
+
+      tabs.style.display = 'flex';
+      tabs.querySelectorAll('.games-tab').forEach(function (b) {
+        b.classList.toggle('on', b.dataset.game === curGame);
+      });
+      DLGames.mountTimer(timer);
+      renderModeToggle();
+      play();
+    }
+
+    /* a background Korean translation just arrived: surface the new mode in
+       the toggle, but don't restart a game the user may already be playing. */
+    function onKoArrived() {
+      if (!curLesson) return;
+      curInfo = DLGames.buildItems(curLesson, curLesson.__ko);
+      curModes = DLGames.modesFor(curInfo);
+      renderModeToggle();
+    }
+
+    function play() {
+      empty.style.display = 'none';
+      DLGames.play(stage, curGame, curInfo.items, curMode, curId);
+    }
+
+    /* ---- events ---- */
+    sel.addEventListener('change', async function () {
+      curId = sel.value;
+      if (!curId) { DLGames.endTimer(); timer.innerHTML = ''; tabs.style.display = 'none'; modes.innerHTML = ''; stage.innerHTML = ''; stage.appendChild(empty); empty.style.display = 'block'; return; }
+      stage.innerHTML = '<div class="games-empty">' + esc(dlT('games.loading') || 'Loading…') + '</div>';
+      curLesson = await loadLesson(curId);
+      if (!curLesson) { stage.innerHTML = '<div class="games-empty">' + esc(dlT('games.notFound') || 'Lesson not found.') + '</div>'; return; }
+      if (!lessonAllowed(curLesson)) { showPaywall(); return; }
+      // keep the URL shareable
+      try { history.replaceState(null, '', '/games?id=' + encodeURIComponent(curId) + '&game=' + curGame); } catch (e) {}
+      rebuild();
+    });
+
+    tabs.querySelectorAll('.games-tab').forEach(function (b) {
+      b.addEventListener('click', function () {
+        curGame = b.dataset.game;
+        try { if (curId) history.replaceState(null, '', '/games?id=' + encodeURIComponent(curId) + '&game=' + curGame); } catch (e) {}
+        rebuild();
+      });
+    });
+
+    /* ---- boot ---- */
+    (async function () {
+      const [, acc] = await Promise.all([loadLessonList(), dlCheckAccess()]);
+      ACC = acc;
+      if (curId) {
+        stage.innerHTML = '<div class="games-empty">' + esc(dlT('games.loading') || 'Loading…') + '</div>';
+        curLesson = await loadLesson(curId);
+        if (!curLesson) { empty.style.display = 'block'; return; }
+        if (!lessonAllowed(curLesson)) { showPaywall(); return; }
+        rebuild();
+      }
+    })();
+
+    // re-localize on language switch
+    const prev = window.dlOnLangChange;
+    window.dlOnLangChange = function (lang) {
+      if (typeof dlApplyI18n === 'function') dlApplyI18n();
+      if (curLesson) rebuild();
+      if (prev) prev(lang);
+    };
+  })();
+  </script>
+</body>
+</html>

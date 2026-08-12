@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Improve your English — 5 minutes a day | Teacher Lawrence</title>
+<meta name="description" content="Improve your English by using it every day for five minutes. Simple, ready-made lessons you can do in your browser. Sign up free.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  /* ---- ad landing page ---- */
+  .land{max-width:900px;margin:0 auto;padding:34px 20px 10px;}
+  .land-hero{text-align:center;margin-bottom:26px;}
+  .land-hero h1{font-family:'Arial Black',Helvetica,sans-serif;font-size:clamp(26px,5.5vw,40px);line-height:1.15;color:var(--ink);margin:0 0 14px;}
+  .land-hero .accent{color:var(--accent);}
+  .land-hero p{font-size:clamp(16px,2.4vw,19px);color:var(--muted);max-width:560px;margin:0 auto;line-height:1.5;}
+
+  /* three quick reasons */
+  .land-why{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:28px auto 30px;max-width:760px;}
+  .land-why .why{border:1px solid var(--rule);border-radius:16px;padding:18px 16px;text-align:center;background:#fff;box-shadow:0 6px 18px rgba(30,40,90,.05);}
+  .land-why .why .ic{font-size:26px;line-height:1;margin-bottom:10px;}
+  .land-why .why h3{font-family:Helvetica,Arial,sans-serif;font-size:15.5px;font-weight:800;margin:0 0 5px;color:var(--ink);}
+  .land-why .why p{font-family:Helvetica,Arial,sans-serif;font-size:13.5px;line-height:1.5;color:var(--muted);margin:0;}
+  @media(max-width:640px){.land-why{grid-template-columns:1fr;max-width:420px;}}
+
+  /* signup card */
+  .signup{max-width:420px;margin:0 auto;padding:26px 24px 22px;border:1px solid var(--rule);border-radius:20px;background:var(--soft);box-shadow:0 12px 30px rgba(30,40,90,.08);font-family:Helvetica,Arial,sans-serif;}
+  .signup h2{font-family:'Arial Black',Helvetica,sans-serif;font-size:20px;text-align:center;margin:0 0 4px;color:var(--ink);}
+  .signup .sub{text-align:center;font-size:14px;color:var(--muted);margin:0 0 18px;}
+  .signup label{display:block;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 0 6px;}
+  .signup input{width:100%;font-size:15px;padding:12px;border-radius:10px;border:1px solid var(--grid);background:#fff;}
+  .signup .pw-wrap{position:relative;}
+  .signup .pw-wrap input{padding-right:64px;}
+  .signup .pw-toggle{position:absolute;top:50%;right:8px;transform:translateY(-50%);background:none;border:none;padding:6px 8px;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;border-radius:8px;}
+  .signup .pw-toggle:hover{background:rgba(91,110,240,.1);}
+  .signup .go{width:100%;margin-top:20px;font-size:16px;font-weight:800;padding:14px;border-radius:26px;border:none;background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(91,110,240,.25);}
+  .signup .go:disabled{opacity:.6;cursor:wait;}
+  .signup .msg{margin-top:14px;text-align:center;font-size:14px;min-height:20px;}
+  .signup .msg.err{color:#c0392b;}
+  .signup .msg.ok{color:var(--accent2);}
+  .signup .haveacc{text-align:center;margin-top:14px;font-size:13px;color:var(--muted);}
+  .signup .haveacc a{color:var(--accent);font-weight:700;}
+  .land-trust{text-align:center;font-family:Helvetica,Arial,sans-serif;font-size:13px;color:var(--muted);margin:16px auto 40px;max-width:420px;}
+</style>
+</head>
+<body>
+
+  <!-- top nav -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="land">
+    <div class="land-hero">
+      <h1>Improve your English by using it every day for <span class="accent">five minutes</span></h1>
+      <p>Simple, ready-made English lessons you can open in your browser on any phone, tablet or computer. Small steps, every day — that's the whole secret.</p>
+    </div>
+
+    <div class="land-why">
+      <div class="why">
+        <div class="ic">⏱️</div>
+        <h3>Just 5 minutes</h3>
+        <p>Short lessons that fit into a busy day. No pressure, no long study sessions.</p>
+      </div>
+      <div class="why">
+        <div class="ic">📖</div>
+        <h3>Ready to go</h3>
+        <p>Reading, vocabulary, comprehension and word puzzles — all prepared for you.</p>
+      </div>
+      <div class="why">
+        <div class="ic">📈</div>
+        <h3>Steady progress</h3>
+        <p>Pick your level and do a little each day. Small and steady really works.</p>
+      </div>
+    </div>
+
+    <!-- signup form -->
+    <div class="signup">
+      <h2>Start free today</h2>
+      <p class="sub">Create your account and open your first lesson.</p>
+      <label for="name">Name</label>
+      <input type="text" id="name" placeholder="Your name" autocomplete="name">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      <label for="password">Password</label>
+      <div class="pw-wrap">
+        <input type="password" id="password" placeholder="at least 6 characters" autocomplete="new-password">
+        <button type="button" class="pw-toggle" id="pwToggle" onclick="togglePassword()" aria-pressed="false" aria-label="Show password">Show</button>
+      </div>
+      <button class="go" id="goBtn" onclick="submitSignup()">Start free →</button>
+      <div class="msg" id="msg"></div>
+      <div class="haveacc">Already have an account? <a href="/login">Log in</a></div>
+    </div>
+
+    <p class="land-trust">Free to start. No card needed. You can do a lesson in your browser right away.</p>
+  </div>
+
+<script>
+  // Basic form UI works even if the Supabase CDN import below is slow or
+  // fails — never gate the page's controls on an external library.
+  window.togglePassword = function () {
+    const inp = document.getElementById('password');
+    const btn = document.getElementById('pwToggle');
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', String(show));
+    btn.textContent = show ? 'Hide' : 'Show';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    inp.focus();
+  };
+  window.setMsg = function (t, cls) {
+    const m = document.getElementById('msg'); m.textContent = t || ''; m.className = 'msg ' + (cls || '');
+  };
+  // Enter key submits from any field
+  ['name','email','password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); submitSignup(); }
+    });
+  });
+</script>
+<script type="module">
+  import { supabase } from './account.js';
+
+  // Send a new (or already-logged-in) user into the same onboarding flow
+  // the rest of the site uses, so role/level get set once and progress is
+  // saved to their account.
+  async function afterAuth() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) localStorage.setItem('dl_uid', user.id);
+    } catch (e) {}
+    location.href = '/onboard';
+  }
+
+  // Already signed in? Skip the form and continue.
+  supabase.auth.getUser().then(({ data: { user } }) => { if (user) afterAuth(); }).catch(() => {});
+
+  window.submitSignup = async () => {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!name) { setMsg('Please enter your name.', 'err'); return; }
+    if (!email || !password) { setMsg('Please enter your email and a password.', 'err'); return; }
+    if (!email.includes('@')) { setMsg('Please enter a valid email address.', 'err'); return; }
+    if (password.length < 6) { setMsg('Password must be at least 6 characters.', 'err'); return; }
+    const btn = document.getElementById('goBtn'); btn.disabled = true;
+    setMsg('');
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+      if (error) throw error;
+      if (data.session) {
+        // Signed in immediately — go to onboarding.
+        afterAuth();
+      } else {
+        // Email confirmation is required — tell them to check their inbox.
+        setMsg('Almost there! Check your email to confirm your account, then log in.', 'ok');
+        btn.disabled = false;
+      }
+    } catch (e) {
+      // If the account already exists, point them to log in.
+      const msg = (e && e.message) || 'Something went wrong. Please try again.';
+      setMsg(/already|registered|exists/i.test(msg) ? 'That email is already registered — please log in instead.' : msg, 'err');
+      btn.disabled = false;
+    }
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .admin{max-width:900px;margin:34px auto;padding:0 18px;font-family:Helvetica,Arial,sans-serif;}
+  .admin h1{font-family:'Arial Black',sans-serif;font-size:26px;color:var(--ink);margin-bottom:4px;}
+  .admin .sub{color:var(--muted);margin-bottom:22px;font-size:14px;}
+  .admin .msg{color:var(--muted);padding:40px 0;text-align:center;}
+  .tiles{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
+  .tile{flex:1;min-width:140px;background:#fff;border:1px solid var(--rule);border-radius:14px;padding:16px 18px;}
+  .tile .n{font-family:'Arial Black',sans-serif;font-size:32px;color:var(--ink);line-height:1;}
+  .tile .t{font-size:13px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+  .invite-card{background:var(--soft);border:1px solid var(--rule);border-radius:14px;padding:16px 18px;margin-bottom:22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .invite-card .lbl{font-size:13px;color:var(--muted);font-weight:700;}
+  .invite-card .code{font-family:'Arial Black',sans-serif;font-size:26px;letter-spacing:4px;color:var(--accent);}
+  .invite-card button{font-size:13px;font-weight:700;padding:8px 14px;border-radius:20px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .voice-link{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;
+    padding:12px 20px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);
+    color:#fff;text-decoration:none;margin-bottom:22px;}
+  .voice-link:hover{opacity:.9;}
+  .filters{display:flex;gap:8px;margin-bottom:12px;}
+  .filters button{font-size:13px;font-weight:700;padding:8px 16px;border-radius:20px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .filters button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tbl-wrap{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:14px;}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:620px;}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--rule);white-space:nowrap;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:#fafbfc;}
+  tbody tr{cursor:pointer;} tr:last-child td{border-bottom:none;}
+  tbody tr:hover td{background:#fafbff;}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+  .tag.mine{background:var(--accent);color:#fff;}
+  .tag.self{background:#eceef3;color:var(--muted);}
+  td.email{white-space:normal;word-break:break-word;min-width:180px;}
+  .crumbs{font-size:13px;color:var(--muted);margin-bottom:14px;}
+  .crumbs a{color:var(--accent);cursor:pointer;font-weight:700;text-decoration:none;}
+  .cal{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
+  .cal .d{width:22px;height:22px;border-radius:6px;background:#eceef3;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);}
+  .cal .d.on{background:var(--accent);color:#fff;}
+  .hw-list{margin-bottom:22px;}
+  .hw-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;
+    border:1px solid var(--rule);border-radius:12px;padding:12px 16px;margin-bottom:8px;text-decoration:none;color:var(--ink);}
+  .hw-row:hover{border-color:var(--accent);}
+  .hw-row-title{font-weight:700;}
+  .hw-row-done{font-size:12px;font-weight:700;color:var(--muted);}
+  .manage-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .manage-row button{font-size:13px;font-weight:700;padding:9px 16px;border-radius:20px;border:1px solid var(--grid);background:#fff;color:var(--ink);cursor:pointer;}
+  .manage-row button.danger{color:#c0392b;border-color:#e6b8b2;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+    <a class="nav-link" href="/" data-i18n="nav.library">Library</a>
+    <a class="nav-link" href="/path" data-i18n="nav.path">Path</a>
+    <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
+    <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script src="token.js"></script>
+  <script type="module" src="account.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="admin">
+    <h1 data-i18n="admin.title">Students</h1>
+    <p class="sub" data-i18n="admin.subtitle">Everyone learning on Teacher Lawrence — invited and self-signed-up.</p>
+    <div id="body"><div class="msg" data-i18n="admin.loading">Loading…</div></div>
+  </div>
+
+<script>
+  let DATA = null, FILTER = 'all';
+
+  function fmtTime(sec){
+    if(!sec) return '—';
+    const m = Math.round(sec/60);
+    if(m < 60) return m + ' ' + dlT('admin.min');
+    const h = Math.floor(m/60), r = m%60;
+    return h + ' ' + dlT('admin.hr') + (r ? ' ' + r + ' ' + dlT('admin.min') : '');
+  }
+  function fmtDate(d){
+    if(!d) return dlT('admin.never');
+    return new Date(d+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  }
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function render(){
+    if(!DATA) return;
+    const s = DATA.summary;
+    const rows = DATA.students.filter(x => FILTER==='mine' ? x.mine : true);
+    const body = document.getElementById('body');
+    body.innerHTML = `
+      <div class="tiles">
+        <div class="tile"><div class="n">${s.total}</div><div class="t">${dlT('admin.totalStudents')}</div></div>
+        <div class="tile"><div class="n">${s.mine}</div><div class="t">${dlT('admin.myStudents')}</div></div>
+        <div class="tile"><div class="n">${s.activeThisWeek}</div><div class="t">${dlT('admin.activeWeek')}</div></div>
+      </div>
+      <div class="invite-card">
+        <span class="lbl">${dlT('admin.inviteLabel')}</span>
+        <span class="code" id="inviteCode">${DATA.ownerInvite || '––––––'}</span>
+        <button onclick="copyInvite()">${dlT('admin.copy')}</button>
+      </div>
+      <a class="voice-link" href="/admin-voice">🎙️ Manage Google AI Voice (Beta) access →</a>
+      <div class="filters">
+        <button class="${FILTER==='all'?'on':''}" onclick="setFilter('all')">${dlT('admin.filterAll')}</button>
+        <button class="${FILTER==='mine'?'on':''}" onclick="setFilter('mine')">${dlT('admin.filterMine')}</button>
+      </div>
+      ${rows.length ? `<div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>${dlT('admin.colStudent')}</th>
+          <th>${dlT('admin.colType')}</th>
+          <th>${dlT('admin.colTime')}</th>
+          <th>${dlT('admin.colStreak')}</th>
+          <th>${dlT('admin.colLessons')}</th>
+          <th>${dlT('admin.colActive')}</th>
+        </tr></thead>
+        <tbody>${rows.map(x => `<tr onclick="showDetail('${x.id}')">
+          <td class="email">${esc(x.email)}${x.level?`<br><span style="color:var(--muted);font-size:12px;">${esc(x.level)}</span>`:''}</td>
+          <td><span class="tag ${x.mine?'mine':'self'}">${x.mine?dlT('admin.typeMine'):dlT('admin.typeSelf')}</span></td>
+          <td>${fmtTime(x.totalSeconds)}</td>
+          <td>${x.streak>0?('🔥 '+x.streak):'—'}</td>
+          <td>${x.lessons||'—'}</td>
+          <td>${fmtDate(x.lastActive)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : `<div class="msg">${dlT('admin.noStudents')}</div>`}
+    `;
+  }
+  window.setFilter = (f) => { FILTER = f; render(); };
+  window.copyInvite = () => {
+    const code = DATA && DATA.ownerInvite;
+    if(!code) return;
+    if(navigator.clipboard) navigator.clipboard.writeText(code).catch(()=>{});
+  };
+
+  /* ---------- one account in detail (progress + billing actions) ------- */
+  function authHeaders(){ return { 'Content-Type':'application/json', Authorization:'Bearer '+dlReadToken() }; }
+
+  let LESSON_META = null;
+  async function lessonMeta(){
+    if(LESSON_META) return LESSON_META;
+    let list = [];
+    try { const r = await fetch('/api/lessons?meta=1'); if(r.ok) list = await r.json(); } catch(e){}
+    const byId = {}; (list||[]).forEach(L => byId[L.id]=L);
+    LESSON_META = byId; return byId;
+  }
+
+  window.showDetail = async (id) => {
+    const body = document.getElementById('body');
+    body.innerHTML = `<div class="msg">${dlT('admin.loading')}</div>`;
+    try{
+      const [r, meta] = await Promise.all([
+        fetch('/api/save-profile?adminStudent='+encodeURIComponent(id), { headers: authHeaders() }),
+        lessonMeta()
+      ]);
+      const j = await r.json();
+      if(!r.ok){ body.innerHTML = `<div class="msg">${dlT('admin.loadError')}</div>`; return; }
+      renderDetail(j, meta);
+    }catch(e){ body.innerHTML = `<div class="msg">${dlT('admin.loadError')}</div>`; }
+  };
+
+  function renderDetail(data, meta){
+    const s = data.student, days = data.days || [], homework = data.homework || [], lessonHistory = data.lessonHistory || [];
+    const secByDay = {}; days.forEach(d => { secByDay[d.day] = d.seconds||0; });
+    const cal = [];
+    for(let i=13;i>=0;i--){
+      const dt = new Date(); dt.setDate(dt.getDate()-i);
+      const key = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      cal.push({ key, on: (secByDay[key]||0) > 0, label: dt.getDate() });
+    }
+    document.getElementById('body').innerHTML =
+      `<p class="crumbs"><a onclick="render()">← All students</a></p>
+       <h1 style="font-size:22px;">${esc(s.name || s.email || 'Account')}</h1>
+       <p class="sub">${esc(s.email||'')}${s.level?' · '+esc(s.level):''}${s.role?' · '+esc(s.role):''}</p>
+       <div class="tiles">
+         <div class="tile"><div class="n">${fmtTime(s.totalSeconds)}</div><div class="t">${dlT('admin.colTime')}</div></div>
+         <div class="tile"><div class="n">${s.streak>0?('🔥 '+s.streak):'0'}</div><div class="t">${dlT('admin.colStreak')}</div></div>
+         <div class="tile"><div class="n">${s.lessons||0}</div><div class="t">${dlT('admin.colLessons')}</div></div>
+       </div>
+       <p class="sub" style="margin-bottom:4px">Last 14 days</p>
+       <div class="cal">${cal.map(d=>`<div class="d ${d.on?'on':''}" title="${d.key}">${d.label}</div>`).join('')}</div>` +
+      (lessonHistory.length ? `
+       <p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">📖 Lessons done</p>
+       <div class="hw-list">${lessonHistory.map(h => `<a class="hw-row" href="/lesson?id=${encodeURIComponent(h.lessonId)}" target="_blank">
+           <span class="hw-row-title">${esc((meta[h.lessonId]||{}).title || h.lessonId)}</span>
+           <span class="hw-row-done">${fmtDate((h.updated||'').slice(0,10))}</span>
+         </a>`).join('')}</div>` : `
+       <p class="sub" style="margin:22px 0 8px;">No lessons started yet.</p>`) +
+      (homework.length ? `
+       <p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">📕 Homework</p>
+       <div class="hw-list">${homework.map(a => `<div class="hw-row"><span class="hw-row-title">${esc((meta[a.lessonId]||{}).title || a.lessonId)}</span></div>`).join('')}</div>` : '') +
+      `<p class="sub" style="margin:22px 0 8px;font-weight:700;color:var(--ink);">💳 Billing</p>
+       <p class="sub">${s.subscribed ? 'Has access right now (subscribed, trialing, or comped).' : 'No active access right now.'}
+         ${s.hasStripeCustomer ? 'Has a Stripe subscription on file.' : 'No Stripe subscription on file — comping is the only way to give them free access.'}</p>
+       <div class="manage-row">
+         <button onclick="adminSetSubscribed('${s.id}', ${!s.subscribed})">${s.subscribed?'Revoke free access':'Grant free access'}</button>
+         ${s.hasStripeCustomer ? `<button onclick="adminCancelSub('${s.id}')">Cancel Stripe subscription</button>` : ''}
+         <button class="danger" onclick="adminDeleteUser('${s.id}','${esc(s.name||s.email||'this account')}')">Delete account</button>
+       </div>
+       <p class="sub" id="adminActionMsg" style="min-height:18px;"></p>`;
+  }
+
+  window.adminSetSubscribed = async (id, subscribed) => {
+    const msg = document.getElementById('adminActionMsg');
+    if(msg) msg.textContent = 'Saving…';
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers: authHeaders(), body: JSON.stringify({ adminSetSubscribed:{ userId:id, subscribed } }) });
+      if(r.ok) showDetail(id); else if(msg) msg.textContent = 'Could not update.';
+    }catch(e){ if(msg) msg.textContent = 'Could not update.'; }
+  };
+  window.adminCancelSub = async (id) => {
+    if(!confirm("Cancel this person's Stripe subscription now? They stop being billed immediately — this can't be undone from here, they'd need to resubscribe.")) return;
+    const msg = document.getElementById('adminActionMsg');
+    if(msg) msg.textContent = 'Canceling…';
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers: authHeaders(), body: JSON.stringify({ adminCancelSubscription:{ userId:id } }) });
+      const j = await r.json();
+      if(r.ok){ showDetail(id); } else if(msg) msg.textContent = j.error || 'Could not cancel.';
+    }catch(e){ if(msg) msg.textContent = 'Could not cancel.'; }
+  };
+  window.adminDeleteUser = async (id, name) => {
+    if(!confirm('Permanently delete '+name+"'s account? This removes their login and all their data, and can't be undone. Any active Stripe subscription is canceled first.")) return;
+    try{
+      const r = await fetch('/api/save-profile', { method:'POST', headers: authHeaders(), body: JSON.stringify({ adminDeleteUser:{ userId:id } }) });
+      if(r.ok){ DATA = null; loadAdmin(); } else { alert('Could not delete that account.'); }
+    }catch(e){ alert('Could not delete that account.'); }
+  };
+
+  async function loadAdmin(){
+    const body = document.getElementById('body');
+    const token = (typeof dlReadToken==='function') ? dlReadToken() : null;
+    if(!token){ body.innerHTML = `<div class="msg">${dlT('admin.notAuthorized')}</div>`; return; }
+    try{
+      const r = await fetch('/api/save-profile?admin=1', { headers:{ Authorization:'Bearer '+token } });
+      if(r.status === 403){ body.innerHTML = `<div class="msg">${dlT('admin.notAuthorized')}</div>`; return; }
+      if(!r.ok){ body.innerHTML = `<div class="msg">${dlT('admin.loadError')}</div>`; return; }
+      DATA = await r.json();
+      // make sure the owner has an invite code even before any student joins
+      if(!DATA.ownerInvite){
+        try{
+          const ir = await fetch('/api/save-profile?invite=1', { headers:{ Authorization:'Bearer '+token } });
+          if(ir.ok){ const ij = await ir.json(); DATA.ownerInvite = ij.code; }
+        }catch(e){}
+      }
+      render();
+    }catch(e){
+      body.innerHTML = `<div class="msg">${dlT('admin.loadError')}</div>`;
+    }
+  }
+  loadAdmin();
+  const prevLangHook = window.dlOnLangChange;
+  window.dlOnLangChange = (lang) => { render(); if(prevLangHook) prevLangHook(lang); };
+</script>
+</body>
+</html>
