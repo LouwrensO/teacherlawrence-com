@@ -1,7 +1,7 @@
 // /api/seed.js  — one-time loader: copies the lessons from the static
 // public/lessons.js into the Supabase database. Protected by SEED_TOKEN.
 // Visit /api/seed?token=YOUR_TOKEN once after setting the env vars.
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
 const SITE = "https://teacherlawrence.com";
 
 export default async function handler(req, res) {

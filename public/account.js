@@ -4,8 +4,8 @@
 // Uses Supabase Auth. The publishable key is safe to ship.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const SUPABASE_KEY = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const SUPABASE_KEY = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 const OWNER_EMAIL = "louwrensoberholzer@gmail.com";  // sees the Admin link
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);

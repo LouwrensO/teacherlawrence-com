@@ -2,8 +2,8 @@
 // (no CDN, no client SDK) and asks OUR OWN server whether that user is
 // subscribed. Same-origin only, so this is fast and never blocked by a
 // slow external library CDN. Include with a plain <script src="token.js">.
-const DL_SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const DL_SUPABASE_PUBLISHABLE = "YOUR-NEW-PUBLISHABLE-KEY";
+const DL_SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const DL_SUPABASE_PUBLISHABLE = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 
 function dlReadToken() {
   try {

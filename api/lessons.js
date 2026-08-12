@@ -8,8 +8,8 @@
 // their own private lesson back. Without this forwarding, every request
 // looks anonymous and a private lesson would be invisible even to its
 // own creator.
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const SUPABASE_KEY = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const SUPABASE_KEY = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 
 export default async function handler(req, res) {
   try {

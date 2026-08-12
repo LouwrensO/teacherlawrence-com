@@ -4,7 +4,7 @@ import crypto from "crypto";
 
 export const config = { api: { bodyParser: false } }; // we need the raw body
 
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
 
 function rawBody(req) {
   return new Promise((resolve, reject) => {

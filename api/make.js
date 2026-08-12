@@ -8,8 +8,8 @@ import { PLAN, LEVEL_ORDER } from "./_plan.js";
 import { fetchUnsplashPhoto } from "./_unsplash.js";
 import { dsChatJSON } from "./_ds.js";
 
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const PUBLISHABLE = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const PUBLISHABLE = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 
 const GUIDE = {
   beginner:     "CEFR A1. Very simple, short sentences. ~150 words, 3 short paragraphs. 6 vocab. 3 comprehension, 3 discussion.",

@@ -3,8 +3,8 @@
 // CDN), so this is fast and reliable even when a JS-library CDN is slow.
 import { isLiveVoiceAllowed } from "./_liveVoiceAllowlist.js";
 
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const PUBLISHABLE  = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const PUBLISHABLE  = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 
 export default async function handler(req, res) {
   try {

@@ -1,7 +1,7 @@
 // /api/checkout.js — creates a Stripe Checkout session for the $5/month plan.
 // Called by subscribe.html with the signed-in user's Supabase access token.
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const PUBLISHABLE  = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const PUBLISHABLE  = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 const PRICE_ID     = "YOUR-NEW-STRIPE-PRICE-ID";
 const SITE         = "https://teacherlawrence.com";
 

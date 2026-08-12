@@ -17,8 +17,8 @@
 //                                                        no-op, so calling more than once is harmless.
 import { dsChatJSON } from "./_ds.js";
 
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const PUBLISHABLE = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const PUBLISHABLE = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 const LANG_NAME = { ko: "Korean", zh: "Simplified Chinese", ja: "Japanese", es: "Spanish" };
 
 function stripTags(s) { return (s || "").replace(/<[^>]+>/g, ""); }

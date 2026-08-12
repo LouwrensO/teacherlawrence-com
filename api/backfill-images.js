@@ -4,7 +4,7 @@
 // Token-protected like /api/make. A small admin page loops this call
 // until nothing is left, so the whole library gets real photos without
 // waiting for someone to open each lesson organically.
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
 
 export default async function handler(req, res) {
   try {

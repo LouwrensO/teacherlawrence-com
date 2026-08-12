@@ -9,7 +9,7 @@
 //   Supabase so it's found once and then reused everywhere (the lesson
 //   page AND the library/Path card grids). Merged into this file (was
 //   /api/save-image.js) to stay under Vercel's Hobby-plan 12-function cap.
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
 
 async function searchUnsplash(req, res) {
   try {

@@ -11,8 +11,8 @@
 //     linked to that teacher (profiles.teacher_id).
 //   • owner-only admin aggregation (?admin=1): per-student time, activity,
 //     streak, lessons.
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const PUBLISHABLE = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const PUBLISHABLE = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 
 // The site owner. Only this account can read the admin dashboard.
 const OWNER_EMAIL = "louwrensoberholzer@gmail.com";

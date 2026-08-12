@@ -39,8 +39,8 @@
 import { dsChatJSON, fetchWithRetry, DEEPSEEK_URL } from "./_ds.js";
 import { isLiveVoiceAllowed } from "./_liveVoiceAllowlist.js";
 
-const SUPABASE_URL = "https://YOUR-NEW-PROJECT-REF.supabase.co";
-const PUBLISHABLE  = "YOUR-NEW-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://ffkukwgbslmuhrmbyfts.supabase.co";
+const PUBLISHABLE  = "sb_publishable_YBAbltikDkK6ag5PAjTJXg_99i6Yow8";
 
 // Gemini Live model for the voice-to-voice test — verify this is still a
 // current, available Live-API model name in Google AI Studio before
