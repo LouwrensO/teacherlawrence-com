@@ -12,7 +12,7 @@
      that needs it. */
   .hero-kicker{font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:8px;}
   /* Home "how it works" band — parents & adult learners */
-  .hiw{max-width:1000px;margin:6px auto 0;padding:8px 20px 4px}
+  .hiw{max-width:1000px;margin:6px auto 0;padding:8px 20px 4px;text-align:center}
   .hiw h2{text-align:center;font-size:clamp(20px,3vw,26px);font-weight:800;margin:0 0 20px}
   .hiw-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   .hiw-step{border:1px solid rgba(120,130,150,.2);border-radius:16px;padding:20px 18px;background:var(--card,#fff);
@@ -28,13 +28,6 @@
 <script src="pixel.js"></script>
 </head>
 <body>
-
-  <!-- TEMPORARY deploy-check banner — plain static HTML, no JS, can't be
-       hidden by any script logic. Remove once confirmed the live domain is
-       showing current pushes (same trick used on esllearner.com before). -->
-  <div style="background:#ff5a1f;color:#fff;text-align:center;padding:14px;font-family:Helvetica,Arial,sans-serif;font-weight:800;font-size:16px;">
-    🟠 ORANGE TEST BANNER — if you see this, you ARE on the latest code
-  </div>
 
   <!-- top nav. Library/Path/Practice/Games are hidden for a logged-out
        visitor (see the script below) so the homepage reads as one simple
@@ -131,7 +124,17 @@
         <h3 data-i18n="home.step3Title">Study English five minutes a day</h3>
       </div>
     </div>
+    <!-- second, identical Start button right after the steps, so there's a
+         clear "what do I click now" right where a reader's eyes land after
+         reading them, not just up in the hero — same id-hide-for-logged-in
+         pattern as heroCta above (see the script right below it). -->
+    <a class="nav-link cta" id="heroCta2" href="/start" data-i18n="home.heroCta" style="display:inline-block;margin-top:24px;">Start →</a>
   </div>
+  <script>
+  if(typeof dlReadToken === 'function' && dlReadToken()){
+    const hc2 = document.getElementById('heroCta2'); if(hc2) hc2.style.display='none';
+  }
+  </script>
 
   <div class="active-plan" id="activePlan" style="display:none;"></div>
 
