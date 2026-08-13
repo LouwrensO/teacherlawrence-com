@@ -6,6 +6,11 @@
 <title>Teacher Lawrence — Learn English at Home, 5 Minutes a Day</title>
 <link rel="stylesheet" href="style.css">
 <style>
+  /* Small tagline above the hero heading — same visual treatment as the
+     other kicker labels already used elsewhere in this app (slide-kicker,
+     practice-kicker), just scoped to this page since it's the only spot
+     that needs it. */
+  .hero-kicker{font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:8px;}
   /* Home "how it works" band — parents & adult learners */
   .hiw{max-width:1000px;margin:6px auto 0;padding:8px 20px 4px}
   .hiw h2{text-align:center;font-size:clamp(20px,3vw,26px);font-weight:800;margin:0 0 20px}
@@ -75,6 +80,7 @@
        problem (scared to speak English) comes first, then who's helping,
        then the one simple daily plan, then the call to action. -->
   <div class="hero"><div class="hero-inner">
+    <div class="hero-kicker" data-i18n="home.kicker">English, Five Minutes a Day</div>
     <h1 data-i18n="home.title">Scared to speak English?</h1>
     <p data-i18n="home.subtitle">I'm Lawrence — I've taught English for 15 years, and I've seen it again and again: the students who use English every single day are the ones who become fluent. Sign up free, pick your level, and practice just five minutes a day. That's the whole plan, and it works.</p>
     <a class="nav-link cta" id="heroCta" href="/login?mode=signup" data-i18n="home.heroCta" style="display:inline-block;margin-top:6px;">Sign up free →</a>
@@ -95,13 +101,13 @@
     <div class="hiw-steps">
       <div class="hiw-step">
         <div class="hiw-num">1</div>
-        <h3 data-i18n="home.step1Title">Pick your level</h3>
-        <p data-i18n="home.step1Body">From first words all the way to advanced reading — start wherever you are.</p>
+        <h3 data-i18n="home.step1Title">Sign up</h3>
+        <p data-i18n="home.step1Body">Create a free account in 30 seconds — no credit card needed.</p>
       </div>
       <div class="hiw-step">
         <div class="hiw-num">2</div>
-        <h3 data-i18n="home.step2Title">Open the lesson</h3>
-        <p data-i18n="home.step2Body">One tap opens it in your browser — reading, vocabulary, comprehension and word puzzles, all done online.</p>
+        <h3 data-i18n="home.step2Title">Pick your level</h3>
+        <p data-i18n="home.step2Body">From first words all the way to advanced reading — start wherever you are.</p>
       </div>
       <div class="hiw-step">
         <div class="hiw-num">3</div>

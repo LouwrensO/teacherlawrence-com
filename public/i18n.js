@@ -115,6 +115,7 @@ const DL_I18N = {
                           ko: "어떤 수업이든 기억력·짝 맞추기·낱말 맞추기 게임으로 — 함께 즐겁게 연습하세요." },
   "family.gamesBtn":    { en: "Play →",              ko: "플레이 →" },
 
+  "home.kicker":        { en: "English, Five Minutes a Day", ko: "영어, 하루 5분" },
   "home.title":         { en: "Scared to speak English?", ko: "영어로 말하기가 두려우신가요?" },
   "home.subtitle":      { en: "I'm Lawrence — I've taught English for 15 years, and I've seen it again and again: the students who use English every single day are the ones who become fluent. Sign up free, pick your level, and practice just five minutes a day. That's the whole plan, and it works.",
                           ko: "저는 로렌스입니다 — 15년간 영어를 가르치면서, 매일 영어를 사용하는 학생이 결국 유창해지는 것을 계속 봐왔습니다. 무료로 가입하고, 레벨을 고른 뒤, 하루 5분만 연습하세요. 그것이 전부입니다 — 그리고 효과가 있습니다." },
@@ -128,10 +129,10 @@ const DL_I18N = {
 
   /* ---- Home "how it works" band (parents & adult learners) ---- */
   "home.howTitle":      { en: "How it works", ko: "이용 방법" },
-  "home.step1Title":    { en: "Pick your level", ko: "레벨을 고르세요" },
-  "home.step1Body":     { en: "From first words all the way to advanced reading — start wherever you are.", ko: "첫 단어부터 고급 독해까지 — 지금 내 수준에서 시작하세요." },
-  "home.step2Title":    { en: "Open the lesson", ko: "수업을 여세요" },
-  "home.step2Body":     { en: "One tap opens it in your browser — reading, vocabulary, comprehension and word puzzles, all done online.", ko: "한 번의 클릭으로 브라우저에서 바로 열립니다 — 읽기, 어휘, 이해력 문제, 낱말 퍼즐까지 모두 온라인에서." },
+  "home.step1Title":    { en: "Sign up", ko: "가입하기" },
+  "home.step1Body":     { en: "Create a free account in 30 seconds — no credit card needed.", ko: "30초 만에 무료로 가입하세요 — 신용카드가 필요 없습니다." },
+  "home.step2Title":    { en: "Pick your level", ko: "레벨을 고르세요" },
+  "home.step2Body":     { en: "From first words all the way to advanced reading — start wherever you are.", ko: "첫 단어부터 고급 독해까지 — 지금 내 수준에서 시작하세요." },
   "home.step3Title":    { en: "Five minutes a day", ko: "하루 5분" },
   "home.step3Body":     { en: "Do a little every day. That's the whole secret — small, steady, and it works.", ko: "매일 조금씩. 그것이 비결의 전부입니다 — 작지만 꾸준하게, 그리고 효과가 있습니다." },
   "home.audienceLine":  { en: "For your children or for yourself — complete beginners welcome. Every lesson comes with an answer key, so a parent can check it together with their child.",

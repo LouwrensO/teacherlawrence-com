@@ -140,9 +140,18 @@ function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 // students on the locked path get no Library/Path/Practice/Games/
 // Create-your-own escape hatches — same pattern as lesson.html's
 // dlApplyStudentChrome(). Teachers/guests: no change.
+//
+// Also strip Path itself down to just the level switcher + lesson list for
+// students — the progress bar/Continue button, speaking-practice hero, and
+// streak/time-today card stayed too busy in practice ("remove all, I want
+// to see what we did before"). Hidden here via CSS rather than removed from
+// renderLockedPath()/render() so the non-student (teacher/guest) browse
+// view, which still shows all of this, is completely untouched.
 if(dlIsStudent()){
   const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
   const create = document.getElementById('createOwnLink'); if(create) create.style.display='none';
+  const overall = document.querySelector('.path-overall'); if(overall) overall.style.display='none';
+  const practiceRow = document.querySelector('.path-practice-row'); if(practiceRow) practiceRow.style.display='none';
 }
 // Real per-lesson progress, three states: 'none' (never opened) / 'in_progress'
 // (opened, or started but hasn't hit the "done" bar yet) / 'done' (server-
@@ -468,6 +477,9 @@ function render(){
    student (see teacher.html's Active Lessons panel). Signed-out or independent
    (non-class) students just never have a plan, so the strip stays hidden. */
 async function renderActivePlan(){
+  // hidden for students now anyway (see the dlIsStudent() block above) —
+  // skip the fetch entirely rather than do it for nothing
+  if(dlIsStudent()) return;
   if(typeof dlReadToken !== 'function') return;
   const token = dlReadToken();
   if(!token) return;
