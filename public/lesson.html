@@ -623,15 +623,16 @@ function computeNextLessonId(id){
   if(localStorage.getItem('dl_role')==='teacher') document.getElementById('tabAssign').style.display='inline-block';
   dlApplyStudentChrome();
 
-  // Any lesson (curated or Create Your Own) that has no Korean translation
-  // yet gets one generated in the background while the user reads, so
-  // it's ready a few seconds later with no extra wait up front. Harmless
-  // to fire more than once (server-side is idempotent once a translation
-  // exists) and cheap to skip if one's already there. Korean now shows
-  // automatically whenever it's available (no more Show/Hide toggle), so
-  // a translation that arrives after slides were already built needs an
-  // explicit rebuild+re-render here to actually appear without a reload.
-  if(LESSON.type !== 'flashcards' && !(LESSON.translations && LESSON.translations.ko)){
+  // Any lesson (curated or Create Your Own, reading or flashcards) that
+  // has no Korean translation yet gets one generated in the background
+  // while the user reads, so it's ready a few seconds later with no extra
+  // wait up front. Harmless to fire more than once (server-side is
+  // idempotent once a translation exists) and cheap to skip if one's
+  // already there. Korean now shows automatically whenever it's available
+  // (no more Show/Hide toggle), so a translation that arrives after
+  // slides were already built needs an explicit rebuild+re-render here to
+  // actually appear without a reload.
+  if(!(LESSON.translations && LESSON.translations.ko)){
     fetch('/api/translate', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ id: LESSON.id, lang: 'ko' })
@@ -639,7 +640,7 @@ function computeNextLessonId(id){
       if(j && j.ok && j.data){
         LESSON.translations = LESSON.translations || {};
         LESSON.translations.ko = j.data;
-        SLIDES = buildSlides(LESSON);
+        SLIDES = (LESSON.type==='flashcards') ? buildFlashcardSlides(LESSON) : buildSlides(LESSON);
         go(CUR);
       }
     }).catch(()=>{});
@@ -1115,10 +1116,9 @@ function buildFlashcardSlides(L){
     : `<div class="big-icon">${L.icon||'🔤'}</div>`;
 
   // 0 — start (same stripped-down cover as buildSlides() above: just the
-  // picture and heading, no summary/hint/teacher-notes card). Flashcards
-  // aren't translated today, so koTitle is normally empty here - kept for
-  // consistency in case that changes.
-  const koTitle = L.translations && L.translations.ko && L.translations.ko.title;
+  // picture and heading, no summary/hint/teacher-notes card).
+  const FT = L.translations && L.translations.ko;
+  const koTitle = FT && FT.title;
   slides.push({ label:dlT('lesson.stepStart'), body:
     `<div class="start-screen">
        ${heroVisual}
@@ -1134,12 +1134,15 @@ function buildFlashcardSlides(L){
   const allText = cards.map(c=>(c.letter?c.letter+', ':'')+c.word).join('. ');
   slides.push({ label:dlT('lesson.stepNewWords'), kicker:K(), title:dlT('lesson.stepNewWords'), hint:dlT('lesson.hintNewWords'), body:
     `<button class="listen-btn" data-speak="${escAttr(allText)}" onclick="speak(this)">🔊 Listen to all</button>
-     <div class="fc-grid">${cards.map(c=>
-      `<div class="fcard">
+     <div class="fc-grid">${cards.map((c,i)=>{
+      const cardKo = FT && FT.cards && FT.cards[i] && FT.cards[i].ko;
+      return `<div class="fcard">
          <div class="fc-emoji">${c.emoji||''}</div>
          <div class="fc-word">${c.letter?`<span class="fc-letter">${esc(c.letter)} ${esc(c.letter.toLowerCase())}</span>`:''}${esc(c.word)}</div>
+         ${cardKo ? `<div class="ko-line ko-word">${esc(cardKo)}</div>` : ''}
          <button class="word-play" data-speak="${escAttr((c.letter?c.letter+'. ':'')+c.word)}" onclick="speak(this)">▶</button>
-       </div>`).join('')}</div>` });
+       </div>`;
+     }).join('')}</div>` });
 
   // read together — one picture-sentence per screen (only if the lesson
   // has them); informational (tap ▶ to hear), no gate, same reasoning as
@@ -1147,9 +1150,10 @@ function buildFlashcardSlides(L){
   const rd = L.read||[];
   const readKicker = rd.length ? K() : null;
   rd.forEach((s,i)=>{
+    const readKo = FT && FT.read && FT.read[i] && FT.read[i].ko;
     slides.push({ label:dlT('lesson.stepRead')+' '+(i+1)+'/'+rd.length, kicker:readKicker, title:dlT('lesson.titleReadTogether'), hint:dlT('lesson.hintReadTogether'), body:
       `<div class="read-list"><div class="read-row"><button class="word-play" data-speak="${escAttr(s.say)}" onclick="speak(this)">▶</button>
-         <div class="read-sentence">${s.html}</div></div></div>` });
+         <div class="read-sentence">${s.html}${readKo ? `<div class="ko-line">${esc(readKo)}</div>` : ''}</div></div></div>` });
   });
 
   // matching game (tap a picture, then its word) — a paired-matching board,
@@ -1171,9 +1175,10 @@ function buildFlashcardSlides(L){
   // reasoning as the other steps above.
   const pr = L.practise||[];
   const practiseKicker = pr.length ? K() : null;
+  const practiseKo = FT && FT.practise;
   pr.forEach((q,i)=>{
     slides.push({ label:dlT('lesson.stepLetsPractise')+' '+(i+1)+'/'+pr.length, kicker:practiseKicker, title:dlT('lesson.stepLetsPractise'), hint:dlT('lesson.hintLetsPractise'), letsTalk:true, body:
-      talkQuestionHtml(q, i, null) });
+      talkQuestionHtml(q, i, practiseKo && practiseKo[i]) });
   });
   // games (right before the score)
   slides.push(gamesSlide(K()));

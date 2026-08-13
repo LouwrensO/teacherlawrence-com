@@ -47,6 +47,50 @@ function choiceFromTranslated(original, translated) {
   });
 }
 
+// Flashcard lessons (Phonics/Beginner) use a completely different data
+// shape (cards/read/practise instead of vocab/paras/comprehension/
+// discussion) — this used to just be rejected as "not supported yet".
+// Shared by translateOne (POST) and translateBulk (GET) so the prompt/
+// validation logic isn't duplicated across both call sites.
+async function translateFlashcards(d, lang, langName, dsKey) {
+  const cardWords = (d.cards || []).map(c => (c && c.word) || "");
+  const readSentences = (d.read || []).map(s => (s && (s.say || stripTags(s.html || ""))) || "");
+  const practise = choiceForTranslate(d.practise);
+
+  const payload = { title: d.title || "", cards: cardWords, read: readSentences, practise };
+  const prompt =
+    `Translate the English strings in this JSON into ${langName}, the way a native ${langName} speaker ` +
+    `would naturally write it for a young child learning English — simple, natural, not a stiff word-for-word ` +
+    `translation. Keep the original meaning exactly. ` +
+    `The "cards" array is a list of single vocabulary words — translate each to its ${langName} equivalent word. ` +
+    `Return EXACTLY ${cardWords.length} items in "cards", in the same order, one per input word. ` +
+    `The "read" array is a list of short sentences — translate each one naturally. ` +
+    `Return EXACTLY ${readSentences.length} items in "read", in the same order, one per input sentence — ` +
+    `never merge, split, or reorder them, since each output is paired with its English original by position. ` +
+    `The "practise" array has EITHER plain strings OR {q,options} objects (multiple-choice) — for a {q,options} ` +
+    `item, translate "q" and every string inside "options", keeping that same shape. ` +
+    `For "title", return its ${langName} translation. Do not add or remove items from any array.\n\n` +
+    JSON.stringify(payload);
+
+  const result = await dsChatJSON(dsKey, {
+    system: "You are a professional translator and native speaker of the target language. Reply with ONLY valid JSON.",
+    user: prompt,
+    temperature: 0.3
+  });
+  if (!result.ok) return { ok: false, reason: "translator did not return JSON" };
+  const t = result.data;
+  if (!Array.isArray(t.cards) || t.cards.length !== cardWords.length) return { ok: false, reason: "card count mismatch" };
+  if (!Array.isArray(t.read) || t.read.length !== readSentences.length) return { ok: false, reason: "sentence count mismatch" };
+
+  const data = {
+    title: t.title || "",
+    cards: t.cards.map(ko => ({ ko: ko || "" })),
+    read: t.read.map(ko => ({ ko: ko || "" })),
+    practise: choiceFromTranslated(d.practise, t.practise)
+  };
+  return { ok: true, data };
+}
+
 async function translateOne(req, res) {
   const { id, lang: langRaw } = req.body || {};
   if (!id) return res.status(400).json({ error: "id required" });
@@ -64,17 +108,30 @@ async function translateOne(req, res) {
   if (!row || !row.data) {
     return res.status(200).json({ ok: false, reason: "lesson not found" });
   }
-  if (row.data.type === "flashcards") {
-    return res.status(200).json({ ok: false, reason: "flashcard lessons use a different data shape, not supported yet" });
-  }
+  const isFlashcards = row.data.type === "flashcards";
 
   const existing = await fetch(
     `${SUPABASE_URL}/rest/v1/translations?lesson_id=eq.${encodeURIComponent(id)}&lang=eq.${lang}&select=data`,
     { headers }
   );
   const existingRows = await existing.json();
-  if (Array.isArray(existingRows) && existingRows[0] && existingRows[0].data && existingRows[0].data.comprehension) {
+  const alreadyDone = isFlashcards
+    ? (Array.isArray(existingRows) && existingRows[0] && existingRows[0].data && existingRows[0].data.cards)
+    : (Array.isArray(existingRows) && existingRows[0] && existingRows[0].data && existingRows[0].data.comprehension);
+  if (alreadyDone) {
     return res.status(200).json({ ok: true, alreadyDone: true, data: existingRows[0].data });
+  }
+
+  if (isFlashcards) {
+    const fc = await translateFlashcards(row.data, lang, langName, dsKey);
+    if (!fc.ok) return res.status(200).json(fc);
+    const ins = await fetch(`${SUPABASE_URL}/rest/v1/translations`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify([{ lesson_id: id, lang, data: fc.data }])
+    });
+    if (!ins.ok) return res.status(200).json({ ok: false, reason: "store failed" });
+    return res.status(200).json({ ok: true, data: fc.data });
   }
 
   const d = row.data;
@@ -172,14 +229,33 @@ async function translateBulk(req, res) {
     return typeof v[0] === "object" && v[0] !== null;
   };
   const done = new Set((await tr.json() || [])
-    .filter(t => t.data && t.data.comprehension && hasCurrentVocab(t.data))
+    .filter(t => t.data && ((t.data.comprehension && hasCurrentVocab(t.data)) || t.data.cards))
     .map(t => t.lesson_id));
 
-  const translatable = lessons.filter(l => (l.data.type || l.type || "reading") === "reading");
+  const translatable = lessons.filter(l => {
+    const type = l.data.type || l.type || "reading";
+    return type === "reading" || type === "flashcards";
+  });
   let target = req.query.id ? translatable.find(l => l.id === req.query.id)
                             : translatable.find(l => !done.has(l.id));
   const remaining = translatable.filter(l => !done.has(l.id)).length;
   if (!target) return res.status(200).json({ ok: true, message: "nothing to translate", remaining: 0 });
+
+  if ((target.data.type || target.type || "reading") === "flashcards") {
+    const fc = await translateFlashcards(target.data, lang, langName, dsKey);
+    if (!fc.ok) return res.status(200).json({ ok: false, reason: fc.reason, lesson: target.id });
+    const ins = await fetch(`${SUPABASE_URL}/rest/v1/translations`, {
+      method: "POST",
+      headers: {
+        apikey: secret, Authorization: "Bearer " + secret,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify([{ lesson_id: target.id, lang, data: fc.data }])
+    });
+    if (!ins.ok) { const dd = await ins.text(); return res.status(502).json({ error: "store failed", detail: dd.slice(0, 400) }); }
+    return res.status(200).json({ ok: true, translated: target.id, lang, remaining: remaining - 1 });
+  }
 
   const d = target.data;
   const paras = (d.paras || []).map(p => sentences(stripTags(p)));

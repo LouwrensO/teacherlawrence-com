@@ -104,7 +104,7 @@ async function buildAllQueue(){
   const r = await fetch('/api/lessons');
   const lessons = await r.json();
   return (Array.isArray(lessons) ? lessons : [])
-    .filter(l => l && l.id && l.type !== 'flashcards')
+    .filter(l => l && l.id)
     .map(l => l.id);
 }
 async function stepAll(state){

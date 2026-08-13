@@ -316,16 +316,14 @@ async function fixDiscussionChoicesAll(req, res, secret) {
     if (!upd.ok) { failed.push(l.id); return; }   // best-effort — one lesson's failure shouldn't block the rest; re-running is safe
     fixed.push(l.id);
 
-    // same reasoning upgradeDiscussionOne() used to have: the discussion
-    // field's shape just changed, so any existing Korean translation is
-    // stale — delete it and let the background translate job regenerate
-    // it (reading lessons only; flashcards aren't translated today).
-    if (!isFlashcards) {
-      fetch(`${SUPABASE_URL}/rest/v1/translations?lesson_id=eq.${encodeURIComponent(l.id)}`, {
-        method: "DELETE",
-        headers: { apikey: secret, Authorization: "Bearer " + secret }
-      }).catch(() => {});
-    }
+    // same reasoning upgradeDiscussionOne() used to have: the discussion/
+    // practise field's shape just changed, so any existing Korean
+    // translation is stale — delete it and let the background translate
+    // job regenerate it.
+    fetch(`${SUPABASE_URL}/rest/v1/translations?lesson_id=eq.${encodeURIComponent(l.id)}`, {
+      method: "DELETE",
+      headers: { apikey: secret, Authorization: "Bearer " + secret }
+    }).catch(() => {});
   }));
 
   return res.status(200).json({ ok: true, count: fixed.length, fixed, failed });
