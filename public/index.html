@@ -73,6 +73,10 @@
     const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
     const cta = document.getElementById('createOwnLink');
     if(cta){ cta.href = '/login?mode=signup'; cta.textContent = dlT('nav.signUp'); cta.setAttribute('data-i18n','nav.signUp'); }
+    // same reasoning as above: no full lesson catalog for a visitor who
+    // hasn't signed up — the homepage should read as a clean 3-step pitch,
+    // not a library to browse before ever creating an account
+    const lib = document.getElementById('libSection'); if(lib) lib.style.display='none';
   }
   </script>
 
@@ -121,8 +125,12 @@
 
   <div class="active-plan" id="activePlan" style="display:none;"></div>
 
-  <!-- library -->
-  <div class="lib">
+  <!-- library — hidden for guests (see the guest-guard script above), so a
+       visitor who hasn't signed up yet gets a clean "sign up, pick a level,
+       5 min a day" pitch instead of the full open catalog; still shown to
+       teachers/logged-in accounts who use this same page as their actual
+       Library browsing tool. -->
+  <div class="lib" id="libSection">
     <div class="filter-row">
       <span class="filter-label" data-i18n="home.levelLabel">Level</span>
       <span id="levelChips"></span>
