@@ -25,12 +25,6 @@
       <a class="nav-link" href="/practice" data-i18n="nav.practice">🎙 Practice</a>
       <a class="nav-link" href="/games" data-i18n="nav.games">🎮 Games</a>
     </span>
-    <!-- students on the locked path get everything above hidden by
-         dlApplyStudentChrome() (Library/Practice/Games are deliberate
-         escape hatches we don't want them wandering into), but they still
-         need a way back to their own Path/dashboard — this one stays
-         visible for them on purpose. -->
-    <a class="nav-link" id="studentPathLink" href="/path" style="display:none;" data-i18n="nav.path">Path</a>
     <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
     <a class="nav-link cta" id="createOwnLink" href="/create" data-i18n="nav.createOwn">Create your own</a>
   </div></div>
@@ -463,15 +457,15 @@ function dlSaveLessonScore(id, score){
    ============================================================ */
 
 /* Strips the locked-path learner view down to "just your next activity" —
-   no Library/Path/Practice/Games/Create-your-own escape hatches, no
-   Present-in-class/Print & PDF/Practice-Speaking mode tabs (there's only
-   one mode now: the current step). Teachers/guests are completely
-   unaffected — same full nav and mode tabs as always. */
+   no Library/Path/Practice/Games/Create-your-own escape hatches (not even
+   a standalone way back to Path - the point is nothing to click but
+   Next), no Present-in-class/Print & PDF/Practice-Speaking mode tabs
+   (there's only one mode now: the current step). Teachers/guests are
+   completely unaffected — same full nav and mode tabs as always. */
 function dlApplyStudentChrome(){
   if(!dlIsStudent()) return;
   const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
   const create = document.getElementById('createOwnLink'); if(create) create.style.display='none';
-  const pathLink = document.getElementById('studentPathLink'); if(pathLink) pathLink.style.display='inline-block';
   ['tabPresent','tabPdf','tabPractice'].forEach(id=>{
     const el = document.getElementById(id); if(el) el.style.display='none';
   });
