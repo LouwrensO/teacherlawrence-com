@@ -866,18 +866,23 @@ function buildSlides(L){
     slides.push({ label:dlT('lesson.stepLetsTalk')+' '+(i+1)+'/'+L.discussion.length, kicker:dlT('lesson.stepPrefix')+' 7', title:dlT('lesson.stepLetsTalk'), hint:dlT('lesson.hintLetsTalk'), letsTalk:true, body:
       talkQuestionHtml(q, i, talkKo && talkKo[i]) });
   });
-  // speaking practice, each its own clean single-purpose screen in the
-  // task list (see practiceCtaSlides() below)
-  slides.push(...practiceCtaSlides());
-
   // Results slide — see lessonResultsSlide()'s own comment. Pushed
   // unconditionally now (used to be conditional on having AI-graded
   // questions to reveal; now it's also where the lesson score lives).
-  // Comes LAST, after speaking practice: it's the true final step, so
-  // Next from here goes straight to the next lesson (nextAction()
-  // already does this for whatever the last slide is — no special case
-  // needed) instead of funneling back into more practice prompts.
+  // Comes right after Let's Talk, BEFORE speaking practice — a student
+  // should see how they scored on Comprehension/Scramble/Let's Talk
+  // before being pointed at more speaking practice, not after. nextAction()
+  // just advances through whatever slide is next regardless of position,
+  // so this doesn't need any special-casing; the true LAST slide (now one
+  // of the practiceCtaSlides() below) is still what sends Next on to the
+  // next lesson, since that's whichever slide ends up last in the array.
   slides.push(lessonResultsSlide(dlT('lesson.stepPrefix')+' 9'));
+
+  // speaking practice, each its own clean single-purpose screen in the
+  // task list (see practiceCtaSlides() below) — comes after the score so
+  // it reads as "here's how you did, now go practice more" rather than
+  // burying the score behind two more screens.
+  slides.push(...practiceCtaSlides());
 
   return slides;
 }
@@ -1170,15 +1175,16 @@ function buildFlashcardSlides(L){
     slides.push({ label:dlT('lesson.stepLetsPractise')+' '+(i+1)+'/'+pr.length, kicker:practiseKicker, title:dlT('lesson.stepLetsPractise'), hint:dlT('lesson.hintLetsPractise'), letsTalk:true, body:
       talkQuestionHtml(q, i, null) });
   });
-  // games (right before speaking practice)
+  // games (right before the score)
   slides.push(gamesSlide(K()));
+
+  // Results slide — see lessonResultsSlide()'s own comment, and the
+  // reading-lesson builder above for why this comes BEFORE speaking
+  // practice now instead of after it.
+  slides.push(lessonResultsSlide(practiseKicker || K()));
 
   // speaking practice (same closing screens as reading lessons)
   slides.push(...practiceCtaSlides());
-
-  // Results slide — see lessonResultsSlide()'s own comment. Comes LAST,
-  // same reasoning as the reading-lesson builder above.
-  slides.push(lessonResultsSlide(practiseKicker || K()));
 
   return slides;
 }
