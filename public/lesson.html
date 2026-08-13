@@ -784,8 +784,14 @@ function buildSlides(L){
   // there's nothing to individually "pass" here anyway (dwell-time already
   // gates progress signal, not slide advancement).
   const articleText = stripTags(L.paras.join(' '));
+  // Korean under the article defaults to HIDDEN (unlike vocab, which is
+  // always on) — a full page of Korean under every paragraph by default
+  // was too much. toggleArticleKo() below just flips the existing
+  // .show-ko CSS class (style.css:456-459 already has both states
+  // defined; this pre-existing class was previously always applied
+  // unconditionally) — no slide rebuild needed, just a class toggle.
   const articleHtml = (T && T.paras)
-    ? `<div class="big ko-article show-ko">${T.paras.map(par=>
+    ? `<div class="big ko-article" id="articleKoBlock">${T.paras.map(par=>
          `<p>${par.map(s=>`<span class="sen"><span class="en">${esc(s.en)}</span><span class="ko">${esc(s.ko)}</span></span>`).join(' ')}</p>`).join('')}</div>`
     : `<div class="big">${L.paras.map(p=>`<p>${p}</p>`).join('')}</div>`;
   slides.push({ label:dlT('lesson.stepReadArticle'), kicker:dlT('lesson.stepPrefix')+' 3', title:dlT('lesson.stepReadArticle'), hint:dlT('lesson.hintReadArticle'), articleRecorder:true, body:
@@ -794,6 +800,7 @@ function buildSlides(L){
        <div class="player-track"><div class="player-fill" id="speakFill"></div></div>
        <div class="player-time" id="speakTime"></div>
      </div>
+     ${(T && T.paras) ? `<div class="talk-controls"><button class="ans-btn ko-switch" id="articleKoToggle" onclick="toggleArticleKo()">${esc(dlT('lesson.translationShow'))}</button></div>` : ''}
      <div class="session-rec-row">
        <div class="chat-mic-note" id="artMicNote" style="display:none;" data-i18n="practice.sessionMicNote">Whole-session AI feedback isn't supported in this browser — you can still listen and self-check as usual.</div>
      </div>
@@ -1170,6 +1177,17 @@ function wsHint(){
 function updateStepsCurrent(label){
   const el = document.getElementById('stepsCurrent');
   if(el) el.textContent = label || '';
+}
+
+// toggles the Read the Article step's Korean lines only — see the
+// comment above articleHtml's construction in buildSlides() for why this
+// is a plain class toggle instead of a slide rebuild.
+function toggleArticleKo(){
+  const block = document.getElementById('articleKoBlock');
+  const btn = document.getElementById('articleKoToggle');
+  if(!block || !btn) return;
+  const showing = block.classList.toggle('show-ko');
+  btn.textContent = dlT(showing ? 'lesson.translationHide' : 'lesson.translationShow');
 }
 
 /* clicking a sidebar step, from anywhere (Present / PDF / Practice
