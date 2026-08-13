@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copy Lessons from esllearner.com — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3ET%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .twrap{max-width:520px;margin:60px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;}
+  .twrap h1{font-family:'Arial Black',sans-serif;font-size:24px;margin-bottom:10px;color:var(--ink);text-align:center;}
+  .twrap p{color:var(--muted);text-align:center;}
+  .rfield{margin-top:18px;}
+  .rfield label{display:block;font-weight:700;font-size:13px;color:var(--ink);margin-bottom:6px;}
+  .rfield input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--soft);font-size:15px;}
+  .rbtn{width:100%;margin-top:20px;padding:12px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;cursor:pointer;}
+  .rbtn:disabled{opacity:.5;cursor:default;}
+  #status{font-size:16px;font-weight:700;color:var(--ink);margin-top:18px;text-align:center;}
+  #detail{color:var(--muted);font-size:14px;margin-top:8px;white-space:pre-wrap;text-align:left;background:var(--soft);border-radius:10px;padding:14px;display:none;}
+</style>
+</head>
+<body>
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+  </div></div>
+
+  <!-- One-time tool: copies public.lessons (visibility='public' only) and
+       their public.translations from the OLD shared esllearner.com
+       database into this project's own database, via /api/migrate-lessons.
+       Never touches users/profiles/classes/homework — content only.
+       oldUrl/oldKey/token are read from the page's own URL (?oldUrl=...
+       &oldKey=...&token=...) at load time, never hardcoded into this file,
+       so the deployed static page itself carries no secret. -->
+  <div class="twrap">
+    <h1>📚 Copy lessons from esllearner.com</h1>
+    <p>One-time tool. Copies the public lesson library (and Korean translations) from the old shared database into this site's own database. Does not touch any student, teacher, or account data.</p>
+
+    <div class="rfield">
+      <label for="oldUrl">Old Supabase project URL</label>
+      <input id="oldUrl" type="text" placeholder="https://xxxx.supabase.co">
+    </div>
+    <div class="rfield">
+      <label for="oldKey">Old Supabase secret key</label>
+      <input id="oldKey" type="text" placeholder="sb_secret_...">
+    </div>
+    <button class="rbtn" id="go">Copy Lessons Now</button>
+
+    <div id="status"></div>
+    <div id="detail"></div>
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const token = params.get('token') || '';
+if(params.get('oldUrl')) document.getElementById('oldUrl').value = params.get('oldUrl');
+if(params.get('oldKey')) document.getElementById('oldKey').value = params.get('oldKey');
+
+const statusEl = document.getElementById('status');
+const detailEl = document.getElementById('detail');
+const btn = document.getElementById('go');
+
+if(!token){
+  statusEl.textContent = 'Add your token to the web address: /migrate-lessons.html?token=YOUR_TOKEN';
+  btn.disabled = true;
+} else {
+  btn.addEventListener('click', async () => {
+    const oldUrl = document.getElementById('oldUrl').value.trim().replace(/\/$/, '');
+    const oldKey = document.getElementById('oldKey').value.trim();
+    if(!oldUrl || !oldKey){ statusEl.textContent = 'Fill in both fields first.'; return; }
+    btn.disabled = true;
+    statusEl.textContent = 'Copying… this can take a minute.';
+    detailEl.style.display = 'none';
+    try{
+      const r = await fetch('/api/migrate-lessons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, oldUrl, oldKey })
+      });
+      const j = await r.json();
+      if(j.error){
+        statusEl.textContent = '⚠️ ' + j.error;
+      } else if(j.ok){
+        statusEl.textContent = '✅ Done!';
+        detailEl.style.display = 'block';
+        detailEl.textContent = j.lessonsCopied + ' lessons and ' + j.translationsCopied + ' translations copied.';
+      } else {
+        statusEl.textContent = '✅ Done.';
+      }
+    }catch(e){
+      statusEl.textContent = 'Network hiccup — safe to tap Copy Lessons Now again.';
+    }
+    btn.disabled = false;
+  });
+}
+</script>
+</body>
+</html>
