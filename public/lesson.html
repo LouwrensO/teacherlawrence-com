@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Teacher Lawrence</title>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
 <script src="pixel.js"></script>
 </head>
@@ -28,7 +28,7 @@
     <span id="accountNav"><a class="nav-link" href="/login" data-i18n="nav.login">Log in</a></span>
     <a class="nav-link cta" id="createOwnLink" href="/create" data-i18n="nav.createOwn">Create your own</a>
   </div></div>
-  <script src="i18n.js?v=2"></script>
+  <script src="i18n.js?v=3"></script>
   <script src="nav.js?v=2"></script>
   <script type="module" src="account.js?v=2"></script>
   <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
@@ -832,9 +832,11 @@ function buildSlides(L){
   // step's own "3 tries" gate proved unreliable and was removed.
   slides.push({ label:dlT('lesson.stepWordSearch'), kicker:dlT('lesson.stepPrefix')+' 5', title:dlT('lesson.stepWordSearch'), hint:dlT('lesson.hintWordSearch'), ws:true, body:
     `<div class="slide-table-wrap">
+       <div class="ws-grid-scroll">
        <table class="ws wsplay" id="wsTable">${
          WS.grid.map((row,r)=>`<tr>${row.map((ch,c)=>`<td data-r="${r}" data-c="${c}">${ch}</td>`).join('')}</tr>`).join('')
        }</table>
+       </div>
        <div class="ws-words"><h3 style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;">Find these</h3>
          <button class="ans-btn hint-btn" style="margin:0 0 10px;" onclick="wsHint()">💡 Hint</button>
          <ul id="wsWords" style="list-style:none;font-family:Helvetica,Arial,sans-serif;">${
@@ -972,15 +974,65 @@ function talkQuestionHtml(question, i, ko){
   // scored per-question. Draft saved as the student types (TALK_DRAFTS),
   // everything scored together on the Results slide — see
   // talkScoreAnswer() and lessonResultsSlide() further down.
+  // Record fills the same text box via browser speech-to-text (no AI
+  // call, no separate audio flow) — the resulting text is scored exactly
+  // like a typed answer on the Results slide, so speaking and typing are
+  // just two ways to fill in the same draft. Only shown when the browser
+  // actually supports SpeechRecognition (see talkToggleMic()); typing is
+  // always available regardless.
+  const micOk = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   return `<div class="bigq talk-list">
        <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
        <div class="talk-controls">
          <button class="ans-btn" data-speak="${escAttr(qText)}" onclick="speak(this)" data-i18n="practice.listen">${esc(dlT('practice.listen'))}</button>
+         ${micOk ? `<button class="ans-btn chat-mic-btn" id="talkMicBtn${i}" onclick="talkToggleMic(${i})" data-i18n="practice.talkMic">${esc(dlT('practice.talkMic'))}</button>` : ''}
        </div>
        <div class="talk-controls talk-type-row" id="talkTypeRow${i}">
          <input class="chat-text-input" id="talkTypeInput${i}" type="text" value="${escAttr(TALK_DRAFTS[i]||'')}" data-i18n-placeholder="practice.hwTypePlaceholder" placeholder="${escAttr(dlT('practice.hwTypePlaceholder'))}" oninput="TALK_DRAFTS[${i}]=this.value">
        </div>
      </div>`;
+}
+/* Record button for a Let's Talk question: dictates straight into that
+   question's own text input (browser SpeechRecognition), same pattern as
+   chatToggleMic() but writing to TALK_DRAFTS[i] instead of sending a chat
+   message. Only one question can be listening at a time. */
+let TALK_RECOG = null, TALK_LISTENING_I = null;
+function talkToggleMic(i){
+  if(TALK_LISTENING_I === i){ talkStopMic(); return; }
+  if(TALK_LISTENING_I !== null) talkStopMic();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR) return;
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  TALK_RECOG = new SR();
+  TALK_RECOG.lang = 'en-US';
+  TALK_RECOG.interimResults = false;
+  TALK_RECOG.maxAlternatives = 1;
+  TALK_RECOG.onstart = () => {
+    TALK_LISTENING_I = i;
+    const btn = document.getElementById('talkMicBtn'+i);
+    if(btn){ btn.classList.add('on'); btn.textContent = dlT('practice.chatListening'); }
+  };
+  TALK_RECOG.onresult = (e) => {
+    const transcript = e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript;
+    if(!transcript) return;
+    const input = document.getElementById('talkTypeInput'+i);
+    if(input){
+      input.value = (input.value.trim() ? input.value.trim()+' ' : '') + transcript;
+      TALK_DRAFTS[i] = input.value;
+    }
+  };
+  TALK_RECOG.onerror = () => talkStopMic();
+  TALK_RECOG.onend = () => talkStopMic();
+  try{ TALK_RECOG.start(); }catch(e){ talkStopMic(); }
+}
+function talkStopMic(){
+  const i = TALK_LISTENING_I;
+  TALK_LISTENING_I = null;
+  if(TALK_RECOG){ try{ TALK_RECOG.stop(); }catch(e){} TALK_RECOG = null; }
+  if(i !== null){
+    const btn = document.getElementById('talkMicBtn'+i);
+    if(btn){ btn.classList.remove('on'); btn.textContent = dlT('practice.talkMic'); }
+  }
 }
 /* Extracts display text regardless of question shape — used anywhere a
    plain question string is needed (chat opener, AI conversation context,
@@ -1213,6 +1265,7 @@ function go(i){
   // which all funnel through go().
   if(dlGateActive() && i > furthestUnlockedIndex()) return;
   speakReset();
+  if(TALK_LISTENING_I !== null) talkStopMic();
   if(i!==CUR && SLIDES[CUR]){
     // leaving the Games step — log whatever time was spent playing (games
     // have no recording/AI feedback of their own, so this is the only signal
@@ -1304,12 +1357,12 @@ function scramRowHtml(v, i){
   return `<div class="scram-list">
      <div class="scram-row" id="scramRow${i}"><span class="scram-big">${scramble(v.w)}</span>
         <input class="scram-input" id="scramIn${i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escAttr(dlT('games.typeHere'))}" data-target="${esc(target)}" onkeydown="if(event.key==='Enter') scramCheck(${i})">
+        <button class="scram-check-all" onclick="scramCheck(${i})" data-i18n="lesson.checkOne">${esc(dlT('lesson.checkOne'))}</button>
         <span class="scram-feedback" id="scramFb${i}"></span>
         <button class="ans-btn hint-btn" onclick="scramHint(${i},'${esc(target)}')">💡 Hint</button>
         <button class="ans-btn" onclick="revealAnswer(${i})" id="ansbtn${i}">Show answer</button>
         <span class="hint-show" id="hint${i}"></span>
         <span class="answer" id="ans${i}">= ${esc(target)}</span></div>
-     <button class="scram-check-all" onclick="scramCheck(${i})" data-i18n="lesson.checkOne">${esc(dlT('lesson.checkOne'))}</button>
      <div class="scram-summary" id="scramSummary" style="display:none;"></div>
    </div>`;
 }

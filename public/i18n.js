@@ -346,6 +346,7 @@ const DL_I18N = {
   "practice.chatTyping": { en: "AI is typing…",      ko: "AI가 입력 중…" },
   "practice.chatMic":    { en: "🎙 Talk",             ko: "🎙 말하기" },
   "practice.chatListening": { en: "🎙 Listening…",   ko: "🎙 듣는 중…" },
+  "practice.talkMic":    { en: "🎤 Record",           ko: "🎤 녹음" },
   "practice.chatSend":   { en: "Send",                ko: "보내기" },
   "practice.chatPlaceholder": { en: "Type here…",     ko: "여기에 입력하세요…" },
   "practice.chatMicNote": { en: "Voice input isn't supported in this browser — you can still type your answer.",
