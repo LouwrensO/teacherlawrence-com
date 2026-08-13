@@ -117,8 +117,6 @@ const DL_I18N = {
 
   "home.kicker":        { en: "English, Five Minutes a Day", ko: "영어, 하루 5분" },
   "home.title":         { en: "Scared to speak English?", ko: "영어로 말하기가 두려우신가요?" },
-  "home.subtitle":      { en: "I'm Lawrence — I've taught English for 15 years, and I've seen it again and again: the students who use English every single day are the ones who become fluent. Sign up free, pick your level, and practice just five minutes a day. That's the whole plan, and it works.",
-                          ko: "저는 로렌스입니다 — 15년간 영어를 가르치면서, 매일 영어를 사용하는 학생이 결국 유창해지는 것을 계속 봐왔습니다. 무료로 가입하고, 레벨을 고른 뒤, 하루 5분만 연습하세요. 그것이 전부입니다 — 그리고 효과가 있습니다." },
   "home.heroCta":       { en: "Sign up free →", ko: "무료로 가입하기 →" },
   "home.heroCtaSub":    { en: "Takes 30 seconds. No credit card needed.", ko: "30초면 충분해요. 신용카드가 필요 없습니다." },
   "home.levelLabel":    { en: "Level", ko: "레벨" },
