@@ -31,11 +31,14 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  // strips a part-of-speech tag like " (n)." or " (adj)" that occasionally
-  // gets baked into generated article prose by mistake (it belongs only in
-  // the vocab list's own `p` field, never in a sentence) — see CLAUDE.md.
+  // strips a part-of-speech tag like " (n)" or " (adj)" that occasionally
+  // gets baked into generated article prose by mistake, anywhere in the
+  // sentence (not just at the end) — it belongs only in the vocab list's
+  // own `p` field, never in a sentence — see CLAUDE.md. Matched against a
+  // fixed list of common POS abbreviations so a genuine parenthetical
+  // aside is never accidentally stripped.
   function stripStrayPosTag(s) {
-    return (s == null ? '' : String(s)).replace(/\s*\([a-z]{1,6}\.?\)(?=[.!?]?\s*$)/i, '');
+    return (s == null ? '' : String(s)).replace(/\s*\((?:n|v|vi|vt|adj|adv|prep|conj|pron|det|interj|aux)\.?\)/gi, '');
   }
 
   // say a bit of text aloud (free, built-in browser voice). Called when a

@@ -34,7 +34,7 @@ function dlBuildPracticeQueue(L, T){
     });
     (L.paras||[]).forEach((p,pi) => {
       const trPara = T&&T.paras&&T.paras[pi];
-      dlSentences(dlStripTags(p)).forEach((s,si) => items.push({ type:'line', text:s, ko: (trPara&&trPara[si]&&trPara[si].ko)||'' }));
+      dlSentences(dlStripTags(p)).forEach((s,si) => items.push({ type:'line', text:stripStrayPosTag(s), ko: (trPara&&trPara[si]&&trPara[si].ko)||'' }));
     });
     // comprehension entries are either a plain string (older lessons) or
     // {q, options, correct} (newer, multiple-choice — see api/make.js /

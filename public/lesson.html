@@ -793,7 +793,7 @@ function buildSlides(L){
   const articleHtml = (T && T.paras)
     ? `<div class="big ko-article" id="articleKoBlock">${T.paras.map(par=>
          `<p>${par.map(s=>`<span class="sen"><span class="en">${esc(stripStrayPosTag(s.en))}</span><span class="ko">${esc(s.ko)}</span></span>`).join(' ')}</p>`).join('')}</div>`
-    : `<div class="big">${L.paras.map(p=>`<p>${p}</p>`).join('')}</div>`;
+    : `<div class="big">${L.paras.map(p=>`<p>${stripStrayPosTag(p)}</p>`).join('')}</div>`;
   slides.push({ label:dlT('lesson.stepReadArticle'), kicker:dlT('lesson.stepPrefix')+' 3', title:dlT('lesson.stepReadArticle'), hint:dlT('lesson.hintReadArticle'), articleRecorder:true, body:
     `<div class="player">
        <button class="play-btn" data-speak="${escAttr(articleText)}" onclick="speak(this)">▶</button>
@@ -2728,7 +2728,7 @@ const articleRecorder = createSessionRecorder({
   resultId:'artResult', scoreTextId:'artScoreText',
   feedbackTextId:'artFeedbackText', scoringId:'artScoring', errorId:'artError',
   micNoteId:'artMicNote', recordLabelKey:'practice.artRecord', finishLabelKey:'practice.sessionFinish',
-  getExpectedItems: () => (LESSON && LESSON.paras) ? speakSentences(stripTags(LESSON.paras.join(' '))).slice(0, 80) : [],
+  getExpectedItems: () => (LESSON && LESSON.paras) ? speakSentences(stripStrayPosTag(stripTags(LESSON.paras.join(' ')))).slice(0, 80) : [],
   getContext: () => ({ title: LESSON.title, topic: LESSON.kicker || '' }),
   progressStep: 'read'
 });

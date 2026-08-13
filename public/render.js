@@ -121,10 +121,10 @@ function renderLesson(L, targetId){
   h += `</div></section>`;
 
   // article (with Listen button)
-  const articleText = stripTags(L.paras.join(' '));
+  const articleText = stripStrayPosTag(stripTags(L.paras.join(' ')));
   h += sec(2,'Read the Article','~'+wordCount(L.paras)+' words','sec-article')+`<div class="article">`;
   h += `<button class="listen-btn" data-speak="${escAttr(articleText)}" onclick="speak(this)">🔊 Listen</button>`;
-  L.paras.forEach((p,i)=> h += `<p${i===0?' class="lead"':''}>${p}</p>`);
+  L.paras.forEach((p,i)=> h += `<p${i===0?' class="lead"':''}>${stripStrayPosTag(p)}</p>`);
   h += `</div></section>`;
 
   // comprehension — either a plain string (write a full-sentence answer on
@@ -253,10 +253,15 @@ function wordCount(paras){return paras.join(' ').replace(/<[^>]+>/g,'').split(/\
 function stripTags(s){return (s||'').replace(/<[^>]+>/g,'');}
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttr(s){return esc(s).replace(/"/g,'&quot;');}
-// strips a part-of-speech tag like " (n)." or " (adj)" that occasionally
-// gets baked into generated article prose by mistake (it belongs only in
-// the vocab list's own `p` field, never in a sentence) — see CLAUDE.md.
-function stripStrayPosTag(s){return (s||'').replace(/\s*\([a-z]{1,6}\.?\)(?=[.!?]?\s*$)/i,'');}
+// strips a part-of-speech tag like " (n)" or " (adj)" that occasionally
+// gets baked into generated article prose by mistake, anywhere in the
+// sentence (not just at the end — seen mid-sentence too, e.g. "an old
+// legend (n), the Chinese Emperor..."). It belongs only in the vocab
+// list's own `p` field, never in a sentence — see CLAUDE.md. Matched
+// against a fixed list of common POS abbreviations (not any short
+// parenthetical) so a genuine parenthetical aside in an article is never
+// accidentally stripped.
+function stripStrayPosTag(s){return (s||'').replace(/\s*\((?:n|v|vi|vt|adj|adv|prep|conj|pron|det|interj|aux)\.?\)/gi,'');}
 // capitalizes only the first character — safe on a multi-word phrase
 // ("give up" -> "Give up"), unlike CSS text-transform:capitalize which
 // would title-case every word. Only apply to single words/phrases, never
