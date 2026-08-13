@@ -87,7 +87,9 @@ async function translateOne(req, res) {
 
   const payload = { title: d.title || "", summary: d.summary || "", sentences: flat, vocab, comprehension, discussion };
   const prompt =
-    `Translate the English strings in this JSON into natural, accurate ${langName}. ` +
+    `Translate the English strings in this JSON into ${langName}, the way a native ${langName} speaker ` +
+    `would naturally write it for a language-learning article — fluent and idiomatic, not a stiff ` +
+    `word-for-word translation. Keep the original meaning exactly, just phrase it naturally. ` +
     `For the "vocab" array, translate BOTH the "w" (word) and "d" (definition) field of each item, ` +
     `keeping the same {w,d} object shape and array length. ` +
     `The "comprehension" and "discussion" arrays EACH have EITHER plain strings OR {q,options} objects (multiple-choice) — ` +
@@ -102,7 +104,7 @@ async function translateOne(req, res) {
     JSON.stringify(payload);
 
   const result = await dsChatJSON(dsKey, {
-    system: "You are a professional translator. Reply with ONLY valid JSON.",
+    system: "You are a professional translator and native speaker of the target language. Reply with ONLY valid JSON.",
     user: prompt,
     temperature: 0.3
   });
@@ -169,7 +171,10 @@ async function translateBulk(req, res) {
     if (!Array.isArray(v) || v.length === 0) return true;
     return typeof v[0] === "object" && v[0] !== null;
   };
-  const done = new Set((await tr.json() || [])
+  // ?force=1 — ignore "already done" and retranslate every lesson from
+  // scratch, e.g. after improving the translation prompt for more natural
+  // phrasing; without it, this only fills in lessons missing a translation.
+  const done = req.query.force ? new Set() : new Set((await tr.json() || [])
     .filter(t => t.data && t.data.comprehension && hasCurrentVocab(t.data))
     .map(t => t.lesson_id));
 
@@ -189,7 +194,9 @@ async function translateBulk(req, res) {
 
   const payload = { title: d.title || "", summary: d.summary || "", sentences: flat, vocab, comprehension, discussion };
   const prompt =
-    `Translate the English strings in this JSON into natural, accurate ${langName}. ` +
+    `Translate the English strings in this JSON into ${langName}, the way a native ${langName} speaker ` +
+    `would naturally write it for a language-learning article — fluent and idiomatic, not a stiff ` +
+    `word-for-word translation. Keep the original meaning exactly, just phrase it naturally. ` +
     `For the "vocab" array, translate BOTH the "w" (word) and "d" (definition) field of each item, ` +
     `keeping the same {w,d} object shape and array length. ` +
     `The "comprehension" and "discussion" arrays EACH have EITHER plain strings OR {q,options} objects (multiple-choice) — ` +
@@ -204,7 +211,7 @@ async function translateBulk(req, res) {
     JSON.stringify(payload);
 
   const result = await dsChatJSON(dsKey, {
-    system: "You are a professional translator. Reply with ONLY valid JSON.",
+    system: "You are a professional translator and native speaker of the target language. Reply with ONLY valid JSON.",
     user: prompt,
     temperature: 0.3
   });
