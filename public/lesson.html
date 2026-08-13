@@ -738,10 +738,15 @@ function buildSlides(L){
   // label, level/summary line, "press start" hint, or teacher's-notes
   // card) — the persistent Next button (#nextBtn, outside buildSlides) is
   // what actually advances off this slide, unaffected by this change.
+  // Korean title shows automatically underneath, same as everywhere else,
+  // whenever this lesson's translation has one (api/translate.js always
+  // requests/saves a translated title alongside the paragraphs/vocab).
+  const koTitle = L.translations && L.translations.ko && L.translations.ko.title;
   slides.push({ label:dlT('lesson.stepStart'), body:
     `<div class="start-screen">
        ${heroVisual}
        <h2>${esc(L.title)}</h2>
+       ${koTitle ? `<div class="ko-line ko-word">${esc(koTitle)}</div>` : ''}
      </div>` });
 
   // Korean translation — shown automatically, small, under the English,
@@ -1035,11 +1040,15 @@ function buildFlashcardSlides(L){
     : `<div class="big-icon">${L.icon||'🔤'}</div>`;
 
   // 0 — start (same stripped-down cover as buildSlides() above: just the
-  // picture and heading, no summary/hint/teacher-notes card)
+  // picture and heading, no summary/hint/teacher-notes card). Flashcards
+  // aren't translated today, so koTitle is normally empty here - kept for
+  // consistency in case that changes.
+  const koTitle = L.translations && L.translations.ko && L.translations.ko.title;
   slides.push({ label:dlT('lesson.stepStart'), body:
     `<div class="start-screen">
        ${heroVisual}
        <h2>${esc(L.title)}</h2>
+       ${koTitle ? `<div class="ko-line ko-word">${esc(koTitle)}</div>` : ''}
      </div>` });
 
   let step=0; const K=()=>dlT('lesson.stepPrefix')+' '+(++step);
