@@ -27,7 +27,9 @@
 
   <!-- One-time tool: copies public.lessons (visibility='public' only) and
        their public.translations from the OLD shared esllearner.com
-       database into this project's own database, via /api/migrate-lessons.
+       database into this project's own database, via /api/make?migrateLessons=1
+       (folded into make.js rather than its own file to stay under Vercel's
+       12-serverless-function cap — see that function's own comment).
        Never touches users/profiles/classes/homework — content only.
        oldUrl/oldKey/token are read from the page's own URL (?oldUrl=...
        &oldKey=...&token=...) at load time, never hardcoded into this file,
@@ -72,11 +74,9 @@ if(!token){
     statusEl.textContent = 'Copying… this can take a minute.';
     detailEl.style.display = 'none';
     try{
-      const r = await fetch('/api/migrate-lessons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, oldUrl, oldKey })
-      });
+      const url = '/api/make?migrateLessons=1&token=' + encodeURIComponent(token) +
+        '&oldUrl=' + encodeURIComponent(oldUrl) + '&oldKey=' + encodeURIComponent(oldKey);
+      const r = await fetch(url);
       const j = await r.json();
       if(j.error){
         statusEl.textContent = '⚠️ ' + j.error;

@@ -82,6 +82,12 @@ export default async function handler(req, res) {
     // needs no AI call and can safely run as one request across every
     // lesson, unlike the per-lesson AI-rewrite tools above.
     if (req.query.fixDiscussionChoices) return fixDiscussionChoicesAll(req, res, secret);
+    // ?migrateLessons=1 — one-time tool (see public/migrate-lessons.html):
+    // copies public.lessons (visibility='public' only) + their
+    // public.translations from the OLD shared esllearner.com database into
+    // this project's own database. Lives here rather than its own file for
+    // the same Vercel Hobby 12-function-cap reason as the branches above.
+    if (req.query.migrateLessons) return migrateLessons(req, res, secret);
 
     // flatten the plan into an ordered list
     const planned = [];
@@ -323,4 +329,64 @@ async function fixDiscussionChoicesAll(req, res, secret) {
   }));
 
   return res.status(200).json({ ok: true, count: fixed.length, fixed, failed });
+}
+
+// one-time content copy from the OLD shared esllearner.com database into
+// this project's own — see public/migrate-lessons.html. oldUrl/oldKey name
+// the OLD project (passed in per-request, never stored); `secret` here is
+// THIS project's own SUPABASE_SECRET_KEY, already verified by the caller.
+// Only public.lessons (visibility='public') + their public.translations are
+// touched — never users/profiles/classes/homework/submissions.
+// created_by is stripped on copy since it references auth.users rows that
+// only exist in the OLD project.
+async function migrateLessons(req, res, secret) {
+  const oldUrl = (req.query.oldUrl || "").replace(/\/$/, "");
+  const oldKey = req.query.oldKey || "";
+  if (!oldUrl || !oldKey) return res.status(400).json({ error: "oldUrl and oldKey required" });
+
+  const oldHeaders = { apikey: oldKey, Authorization: "Bearer " + oldKey };
+  const newHeaders = {
+    apikey: secret, Authorization: "Bearer " + secret,
+    "Content-Type": "application/json", Prefer: "resolution=merge-duplicates"
+  };
+  const PAGE = 500;
+
+  async function fetchAll(url) {
+    let all = [], offset = 0;
+    while (true) {
+      const r = await fetch(`${url}&offset=${offset}&limit=${PAGE}`, { headers: oldHeaders });
+      if (!r.ok) throw new Error(`fetch failed ${r.status}: ${(await r.text()).slice(0, 300)}`);
+      const batch = await r.json();
+      all = all.concat(batch);
+      if (batch.length < PAGE) break;
+      offset += PAGE;
+    }
+    return all;
+  }
+
+  async function insertAll(url, rows) {
+    let copied = 0;
+    for (let i = 0; i < rows.length; i += 200) {
+      const chunk = rows.slice(i, i + 200);
+      const r = await fetch(url, { method: "POST", headers: newHeaders, body: JSON.stringify(chunk) });
+      if (!r.ok) throw new Error(`insert failed ${r.status}: ${(await r.text()).slice(0, 300)} (copied ${copied} so far)`);
+      copied += chunk.length;
+    }
+    return copied;
+  }
+
+  try {
+    const oldLessons = await fetchAll(`${oldUrl}/rest/v1/lessons?select=*&visibility=eq.public&order=id`);
+    const cleanLessons = oldLessons.map(l => ({ ...l, created_by: null }));
+    const lessonsCopied = await insertAll(`${SUPABASE_URL}/rest/v1/lessons`, cleanLessons);
+
+    const ids = new Set(oldLessons.map(l => l.id));
+    const oldTranslations = await fetchAll(`${oldUrl}/rest/v1/translations?select=*&order=lesson_id`);
+    const relevantTranslations = oldTranslations.filter(t => ids.has(t.lesson_id));
+    const translationsCopied = await insertAll(`${SUPABASE_URL}/rest/v1/translations`, relevantTranslations);
+
+    return res.status(200).json({ ok: true, lessonsCopied, translationsCopied });
+  } catch (e) {
+    return res.status(500).json({ error: String((e && e.message) || e) });
+  }
 }
