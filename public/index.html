@@ -99,17 +99,8 @@
   <div class="hero"><div class="hero-inner">
     <div class="hero-kicker" data-i18n="home.kicker">English, Five Minutes a Day</div>
     <h1 data-i18n="home.title">Scared to speak English?</h1>
-    <a class="nav-link cta start-big" id="heroCta" href="/start" data-i18n="home.heroCta" style="margin-top:14px;">Start →</a>
     <p style="font-size:13px;color:var(--muted);margin-top:10px;" data-i18n="home.heroCtaSub">Takes 30 seconds. No credit card needed.</p>
   </div></div>
-  <script>
-  // Signed-in visitors don't need the hero's sign-up push again — let the
-  // "Continue where you left off" plan strip (renderActivePlan(), below)
-  // be the one call to action for them instead.
-  if(typeof dlReadToken === 'function' && dlReadToken()){
-    const hc = document.getElementById('heroCta'); if(hc) hc.style.display='none';
-  }
-  </script>
 
   <!-- how it works (parents & adult learners) -->
   <div class="hiw">
