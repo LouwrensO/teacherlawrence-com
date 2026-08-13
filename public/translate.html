@@ -24,26 +24,50 @@
 
   <div class="twrap">
     <h1>🇰🇷 Building Korean translations…</h1>
-    <p style="color:var(--muted)">Leave this page open. It translates every lesson automatically — no clicking needed.</p>
+    <p style="color:var(--muted)">Leave this page open. It translates every lesson automatically — no clicking needed. Safe to close and reopen this exact page any time; it picks up where it left off.</p>
     <div class="tbar"><div id="bar"></div></div>
     <div id="status">Starting…</div>
     <div id="detail"></div>
     <a id="backlink" class="tback" href="/">← All done — back to the Library</a>
   </div>
 
+<!-- Two modes:
+       (default) — fills in only lessons missing a translation. The server
+       (api/translate.js's translateBulk, called with no id) already picks
+       "the next untranslated lesson" itself every call and is naturally
+       resumable — closing this tab and reopening the same URL just
+       continues, since already-done lessons are excluded server-side.
+       No client-side queue needed for this mode.
+
+       ?all=1 — redo EVERY lesson unconditionally (e.g. after improving the
+       translation prompt). There's no server-side way to track "already
+       force-redone this run", so this mode drives the loop from an
+       explicit lesson id (translateBulk already re-translates+overwrites
+       whatever id is passed, regardless of prior state) and saves the
+       remaining queue to localStorage after every single success — that's
+       what makes THIS mode resumable: reopening the same URL (same lang,
+       same &all=1) picks the saved queue back up instead of restarting
+       the whole library from scratch. -->
 <script>
 const params = new URLSearchParams(location.search);
 const token = params.get('token') || '';
 const lang  = params.get('lang')  || 'ko';
-let doneCount = 0;
+const all   = params.get('all') === '1';
+const LANG_LABEL = { ko: 'Korean', zh: 'Chinese', ja: 'Japanese', es: 'Spanish' }[lang] || lang;
+const STORE_KEY = 'dl_translate_all_queue';
 
-function setBar(done, remaining){
-  const total = done + remaining;
+function setBar(done, total){
   const pct = total ? Math.round(done/total*100) : 100;
   document.getElementById('bar').style.width = pct + '%';
 }
+function finish(doneCount){
+  document.getElementById('status').textContent = '✅ All done! ' + doneCount + ' lesson' + (doneCount===1?'':'s') + ' now have ' + LANG_LABEL + '.';
+  document.getElementById('detail').textContent = '';
+  document.getElementById('backlink').style.display = 'inline-block';
+}
 
-async function step(){
+// ---- default mode: fill in missing translations only (stateless, server picks "next") ----
+async function stepDefault(doneCount){
   try{
     const r = await fetch('/api/translate?token=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(lang));
     const j = await r.json();
@@ -54,26 +78,91 @@ async function step(){
     }
     if(j.translated){ doneCount++; document.getElementById('detail').textContent = 'Just finished: ' + j.translated; }
     const remaining = (typeof j.remaining === 'number') ? j.remaining : 0;
-    setBar(doneCount, remaining);
+    setBar(doneCount, doneCount + remaining);
     if(remaining > 0){
       document.getElementById('status').textContent = 'Translated ' + doneCount + ' · ' + remaining + ' to go';
-      setTimeout(step, 400);
+      setTimeout(() => stepDefault(doneCount), 400);
     } else {
-      document.getElementById('status').textContent = '✅ All done! ' + doneCount + ' lessons now have Korean.';
-      document.getElementById('detail').textContent = '';
-      document.getElementById('backlink').style.display = 'inline-block';
+      finish(doneCount);
     }
   }catch(e){
     document.getElementById('status').textContent = 'Network hiccup — retrying…';
-    setTimeout(step, 1500);
+    setTimeout(() => stepDefault(doneCount), 1500);
   }
 }
 
-if(!token){
-  document.getElementById('status').textContent = 'Add your token to the web address: /translate.html?token=YOUR_TOKEN';
-}else{
-  step();
+// ---- ?all=1 mode: redo every lesson, explicit id-driven, resumable via localStorage ----
+function saveAllQueue(state){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+function loadAllQueue(){
+  try{
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if(s && s.lang === lang && Array.isArray(s.queue) && typeof s.total === 'number') return s;
+  }catch(e){}
+  return null;
 }
+async function buildAllQueue(){
+  const r = await fetch('/api/lessons');
+  const lessons = await r.json();
+  return (Array.isArray(lessons) ? lessons : [])
+    .filter(l => l && l.id && l.type !== 'flashcards')
+    .map(l => l.id);
+}
+async function stepAll(state){
+  if(!state.queue.length){
+    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+    finish(state.total);
+    return;
+  }
+  const id = state.queue[0];
+  try{
+    const r = await fetch('/api/translate?token=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(lang) + '&id=' + encodeURIComponent(id));
+    const j = await r.json();
+    if(j.error){
+      document.getElementById('status').textContent = '⚠️ ' + j.error;
+      document.getElementById('detail').textContent = 'Copy this and send it to Claude.';
+      return;   // stop, but leave this id in the queue so resuming retries it
+    }
+    // move on either way — a soft failure (e.g. sentence-count mismatch)
+    // on one lesson shouldn't block every lesson after it; it can be
+    // retried individually later via retranslate-lesson.html
+    state.queue.shift();
+    saveAllQueue(state);
+    document.getElementById('detail').textContent = (j.ok === false)
+      ? 'Skipped (' + (j.reason || 'failed') + '): ' + id
+      : 'Just finished: ' + id;
+    const done = state.total - state.queue.length;
+    setBar(done, state.total);
+    document.getElementById('status').textContent = 'Translated ' + done + ' of ' + state.total;
+    setTimeout(() => stepAll(state), 400);
+  }catch(e){
+    document.getElementById('status').textContent = 'Network hiccup — retrying…';
+    setTimeout(() => stepAll(state), 1500);
+  }
+}
+
+(async function init(){
+  if(!token){
+    document.getElementById('status').textContent = 'Add your token to the web address: /translate.html?token=YOUR_TOKEN';
+    return;
+  }
+  if(!all){ stepDefault(0); return; }
+
+  const saved = loadAllQueue();
+  let state = saved;
+  if(state){
+    document.getElementById('status').textContent = 'Resuming previous run — ' + state.queue.length + ' left…';
+  } else {
+    document.getElementById('status').textContent = 'Building the list…';
+    const queue = await buildAllQueue();
+    state = { lang, queue, total: queue.length };
+    saveAllQueue(state);
+  }
+  if(!state.queue.length){
+    finish(state.total);
+    return;
+  }
+  stepAll(state);
+})();
 </script>
 </body>
 </html>

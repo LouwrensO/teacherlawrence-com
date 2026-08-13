@@ -171,10 +171,7 @@ async function translateBulk(req, res) {
     if (!Array.isArray(v) || v.length === 0) return true;
     return typeof v[0] === "object" && v[0] !== null;
   };
-  // ?force=1 — ignore "already done" and retranslate every lesson from
-  // scratch, e.g. after improving the translation prompt for more natural
-  // phrasing; without it, this only fills in lessons missing a translation.
-  const done = req.query.force ? new Set() : new Set((await tr.json() || [])
+  const done = new Set((await tr.json() || [])
     .filter(t => t.data && t.data.comprehension && hasCurrentVocab(t.data))
     .map(t => t.lesson_id));
 
