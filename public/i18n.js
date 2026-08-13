@@ -128,15 +128,8 @@ const DL_I18N = {
   /* ---- Home "how it works" band (parents & adult learners) ---- */
   "home.howTitle":      { en: "How it works", ko: "이용 방법" },
   "home.step1Title":    { en: "Sign up", ko: "가입하기" },
-  "home.step1Body":     { en: "Create a free account in 30 seconds — no credit card needed.", ko: "30초 만에 무료로 가입하세요 — 신용카드가 필요 없습니다." },
   "home.step2Title":    { en: "Pick your level", ko: "레벨을 고르세요" },
-  "home.step2Body":     { en: "From first words all the way to advanced reading — start wherever you are.", ko: "첫 단어부터 고급 독해까지 — 지금 내 수준에서 시작하세요." },
-  "home.step3Title":    { en: "Five minutes a day", ko: "하루 5분" },
-  "home.step3Body":     { en: "Do a little every day. That's the whole secret — small, steady, and it works.", ko: "매일 조금씩. 그것이 비결의 전부입니다 — 작지만 꾸준하게, 그리고 효과가 있습니다." },
-  "home.audienceLine":  { en: "For your children or for yourself — complete beginners welcome. Every lesson comes with an answer key, so a parent can check it together with their child.",
-                          ko: "아이를 위해서도, 나 자신을 위해서도 — 완전 초보자도 환영합니다. 모든 수업에는 정답지가 있어 부모님이 아이와 함께 확인할 수 있습니다." },
-  "home.printNote":     { en: "Everything works online, on any phone, tablet or computer — and if you prefer paper, you can print any lesson too.",
-                          ko: "모든 것은 온라인에서, 휴대폰·태블릿·컴퓨터 어디서나 가능합니다 — 종이가 더 편하시면 어떤 수업이든 인쇄할 수도 있습니다." },
+  "home.step3Title":    { en: "Study English five minutes a day", ko: "하루 5분 영어 공부하기" },
 
   "path.title":         { en: "Your Learning Path", ko: "나의 학습 경로" },
   "path.subtitle":      { en: "Start at the very beginning and move up, one lesson at a time — from first sounds all the way to advanced reading. Tick lessons off as you go.",
