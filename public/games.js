@@ -31,6 +31,13 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // strips a part-of-speech tag like " (n)." or " (adj)" that occasionally
+  // gets baked into generated article prose by mistake (it belongs only in
+  // the vocab list's own `p` field, never in a sentence) — see CLAUDE.md.
+  function stripStrayPosTag(s) {
+    return (s == null ? '' : String(s)).replace(/\s*\([a-z]{1,6}\.?\)(?=[.!?]?\s*$)/i, '');
+  }
+
   // say a bit of text aloud (free, built-in browser voice). Called when a
   // card/tile is tapped so the student hears what's on it — the English word,
   // its meaning, or the Korean, depending on the face. `lang` picks the voice
@@ -143,7 +150,7 @@
     if (Tr && Tr.paras) {
       Tr.paras.forEach(function (para) {
         (para || []).forEach(function (s) {
-          if (s && s.en && s.ko) items.push({ word: s.en, emoji: '', ko: s.ko, meaning: '' });
+          if (s && s.en && s.ko) items.push({ word: stripStrayPosTag(s.en), emoji: '', ko: s.ko, meaning: '' });
         });
       });
     }

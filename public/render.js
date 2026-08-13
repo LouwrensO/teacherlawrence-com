@@ -117,7 +117,7 @@ function renderLesson(L, targetId){
   const vocabText = L.vocab.map(v=>`${v.w}. ${v.d}.`).join(' ');
   h += sec(1,'Key Vocabulary','words from the text')+`<div class="vocab">`;
   h += `<button class="listen-btn" data-speak="${escAttr(vocabText)}" onclick="speak(this)">🔊 Listen to the words &amp; meanings</button>`;
-  L.vocab.forEach(v=> h+=`<div><strong>${esc(v.w)}</strong> <i style="color:var(--muted)">${esc(v.p)}</i> — ${esc(v.d)}</div>`);
+  L.vocab.forEach(v=> h+=`<div><strong>${esc(v.w)}</strong> — ${esc(v.d)}</div>`);
   h += `</div></section>`;
 
   // article (with Listen button)
@@ -253,6 +253,10 @@ function wordCount(paras){return paras.join(' ').replace(/<[^>]+>/g,'').split(/\
 function stripTags(s){return (s||'').replace(/<[^>]+>/g,'');}
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttr(s){return esc(s).replace(/"/g,'&quot;');}
+// strips a part-of-speech tag like " (n)." or " (adj)" that occasionally
+// gets baked into generated article prose by mistake (it belongs only in
+// the vocab list's own `p` field, never in a sentence) — see CLAUDE.md.
+function stripStrayPosTag(s){return (s||'').replace(/\s*\([a-z]{1,6}\.?\)(?=[.!?]?\s*$)/i,'');}
 
 /* ---------- read aloud: play / pause (free, built-in browser voice) ----------
    One button toggles play <-> pause and RESUMES from where it paused

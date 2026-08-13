@@ -217,7 +217,7 @@ Reply with ONLY this JSON shape (no extra text):
   "compAnswers": ["one short sentence explaining why that answer is correct", "..."],
   "discussion": ["question 1 text", "..."]
 }
-In the paragraphs, wrap each vocabulary word in <b></b> the first time it appears. Each comprehension question is multiple choice: exactly 4 options, "correct" is the 0-based index of the right one, and the wrong options should be plausible but clearly wrong to someone who read the article — not silly or random. compAnswers must match comprehension order and length. Discussion questions are open-ended, for the student to answer freely in their own words out loud or in writing — plain question text only, no options or "correct" answer.`;
+In the paragraphs, wrap each vocabulary word in <b></b> the first time it appears. Never include a part-of-speech tag like (n)/(v)/(adj) inside the paragraph prose itself — those belong only in the vocab list's own "p" field. Each comprehension question is multiple choice: exactly 4 options, "correct" is the 0-based index of the right one, and the wrong options should be plausible but clearly wrong to someone who read the article — not silly or random. compAnswers must match comprehension order and length. Discussion questions are open-ended, for the student to answer freely in their own words out loud or in writing — plain question text only, no options or "correct" answer.`;
 
     let lesson;
 

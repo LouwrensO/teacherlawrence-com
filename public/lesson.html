@@ -770,7 +770,7 @@ function buildSlides(L){
   L.vocab.forEach((v,i)=>{
     slides.push({ label:dlT('lesson.stepVocabulary')+' '+(i+1)+'/'+L.vocab.length, kicker:dlT('lesson.stepPrefix')+' 1', title:dlT('lesson.titleKeyVocabulary'), hint:dlT('lesson.hintVocabulary'), body:
       `<div class="vlist"><div class="vrow"><button class="word-play" data-speak="${escAttr(v.w+'. '+v.d+'.')}" onclick="speak(this)">▶</button>
-       <div class="vtext"><strong>${esc(v.w)}</strong> <i style="color:var(--muted)">${esc(v.p)}</i> — ${esc(v.d)}${vocabKo(i)}</div></div></div>` });
+       <div class="vtext"><strong>${esc(v.w)}</strong> — ${esc(v.d)}${vocabKo(i)}</div></div></div>` });
   });
 
   // 2 — games (memory match etc.) right after vocabulary, so students drill
@@ -783,7 +783,7 @@ function buildSlides(L){
   // splitting a passage sentence-by-sentence would hurt reading flow and
   // there's nothing to individually "pass" here anyway (dwell-time already
   // gates progress signal, not slide advancement).
-  const articleText = stripTags(L.paras.join(' '));
+  const articleText = stripStrayPosTag(stripTags(L.paras.join(' ')));
   // Korean under the article defaults to HIDDEN (unlike vocab, which is
   // always on) — a full page of Korean under every paragraph by default
   // was too much. toggleArticleKo() below just flips the existing
@@ -792,7 +792,7 @@ function buildSlides(L){
   // unconditionally) — no slide rebuild needed, just a class toggle.
   const articleHtml = (T && T.paras)
     ? `<div class="big ko-article" id="articleKoBlock">${T.paras.map(par=>
-         `<p>${par.map(s=>`<span class="sen"><span class="en">${esc(s.en)}</span><span class="ko">${esc(s.ko)}</span></span>`).join(' ')}</p>`).join('')}</div>`
+         `<p>${par.map(s=>`<span class="sen"><span class="en">${esc(stripStrayPosTag(s.en))}</span><span class="ko">${esc(s.ko)}</span></span>`).join(' ')}</p>`).join('')}</div>`
     : `<div class="big">${L.paras.map(p=>`<p>${p}</p>`).join('')}</div>`;
   slides.push({ label:dlT('lesson.stepReadArticle'), kicker:dlT('lesson.stepPrefix')+' 3', title:dlT('lesson.stepReadArticle'), hint:dlT('lesson.hintReadArticle'), articleRecorder:true, body:
     `<div class="player">
