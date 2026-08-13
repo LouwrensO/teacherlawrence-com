@@ -54,6 +54,12 @@ fetch('/api/lessons').then(r => r.ok ? r.json() : null).then(j => {
 }).catch(() => {});
 
 function pickLevel(key){
+  // Same 'student' role every real signup gets by default (see
+  // onboard.html) - without this, dlApplyStudentChrome() on lesson.html
+  // and path.html never fires, so an anonymous Start visitor would see
+  // the full teacher/guest chrome (mode-toggle bar, Library link, etc.)
+  // instead of the clean one-activity-at-a-time view.
+  localStorage.setItem('dl_role', 'student');
   localStorage.setItem('dl_level', key);
   const first = dlLevelPathList(ALL, key)[0];
   location.href = first ? ('lesson?id=' + encodeURIComponent(first.id)) : '/path';

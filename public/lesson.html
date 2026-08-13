@@ -741,21 +741,14 @@ function buildSlides(L){
   const heroVisual = L.image
     ? `<img class="hero-photo" src="${escAttr(L.image)}" alt="${escAttr(L.imageAlt||L.title)}">`
     : `<div class="big-icon">${L.icon||'📖'}</div>`;
+  // Cover screen stripped down to just the picture + heading (no category
+  // label, level/summary line, "press start" hint, or teacher's-notes
+  // card) — the persistent Next button (#nextBtn, outside buildSlides) is
+  // what actually advances off this slide, unaffected by this change.
   slides.push({ label:dlT('lesson.stepStart'), body:
     `<div class="start-screen">
        ${heroVisual}
-       <div class="slide-kicker">${esc(L.kicker)}</div>
        <h2>${esc(L.title)}</h2>
-       <p class="slide-hint">${esc(L.levelTag)} · ${esc(L.summary||'')}</p>
-       <p class="slide-hint">${dlT('lesson.pressStart')}</p>
-       ${startCard(
-         `<p><b>Warm-up:</b> Ask what students already know about the topic. Pre-teach 2–3 vocabulary words.</p>
-          <p><b>Reading:</b> Read together, then have students read in pairs.</p>
-          <p><b>Flow:</b> Vocabulary → Article → Comprehension → Word Search / Scramble → Let's Talk.</p>
-          ${L.note?`<p style="color:var(--muted)">${esc(L.note)}</p>`:''}`,
-         `<p>${dlT('lesson.goalsFlow')}</p>
-          <p>${dlT('lesson.goalsHint')}</p>`
-       )}
      </div>` });
 
   // Korean translation (only when the KR switch is ON and a translation exists)
