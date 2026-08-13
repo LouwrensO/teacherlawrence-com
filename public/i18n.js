@@ -115,6 +115,9 @@ const DL_I18N = {
                           ko: "어떤 수업이든 기억력·짝 맞추기·낱말 맞추기 게임으로 — 함께 즐겁게 연습하세요." },
   "family.gamesBtn":    { en: "Play →",              ko: "플레이 →" },
 
+  "start.title":        { en: "What's your level?", ko: "당신의 레벨은?" },
+  "start.subtitle":     { en: "Pick one to jump straight into your first lesson.", ko: "레벨을 고르면 바로 첫 수업으로 이동합니다." },
+
   "home.kicker":        { en: "English, Five Minutes a Day", ko: "영어, 하루 5분" },
   "home.title":         { en: "Scared to speak English?", ko: "영어로 말하기가 두려우신가요?" },
   "home.heroCta":       { en: "Start →", ko: "시작하기 →" },

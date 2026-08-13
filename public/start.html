@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pick your level — Teacher Lawrence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3ET%3C/text%3E%3C/svg%3E">
+<script src="pixel.js"></script>
+<style>
+  .start-wrap{max-width:560px;margin:60px auto;padding:0 20px;font-family:Helvetica,Arial,sans-serif;text-align:center;}
+  .start-wrap h1{font-size:clamp(24px,4vw,32px);font-weight:800;margin-bottom:10px;color:var(--ink);}
+  .start-wrap p{color:var(--muted);margin-bottom:28px;}
+  .start-chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+  .start-chips .chip{font-size:16px;padding:12px 20px;}
+</style>
+</head>
+<body>
+  <!-- Duolingo-style entry point: a visitor taps "Start" on the homepage,
+       lands here, picks a level, and goes STRAIGHT into that level's first
+       lesson — no sign-up first. Sign-up only comes later, naturally, once
+       they hit the existing free-sample/paywall gate inside lesson.html
+       (dlIsLessonFree() in token.js: every phonics/beginner lesson is free,
+       plus one free sample per level above that) - that gate is untouched,
+       this page only decides where to send them first. -->
+  <div class="nav"><div class="nav-inner">
+    <a class="brand" href="/"><span class="mark">T</span>Teacher Lawrence</a>
+    <span class="nav-spacer"></span>
+    <span id="langSwitch"></span>
+  </div></div>
+  <script src="i18n.js"></script>
+  <script src="nav.js"></script>
+  <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
+
+  <div class="start-wrap">
+    <h1 data-i18n="start.title">What's your level?</h1>
+    <p data-i18n="start.subtitle">Pick one to jump straight into your first lesson.</p>
+    <div class="start-chips" id="startChips"></div>
+  </div>
+
+<script src="lessons.js"></script>
+<script>
+document.getElementById('startChips').innerHTML = LEVELS.map(l =>
+  `<button type="button" class="chip" onclick="pickLevel('${l.key}')">${l.label}</button>`
+).join('');
+
+// Same live-data-with-fallback pattern as path.html's load() — the small
+// hardcoded LESSONS array is just a last-resort fallback, not what's
+// actually live, so this fetches the real library first to make sure
+// "first lesson" here matches what Path itself would call lesson 1.
+let ALL = LESSONS;
+fetch('/api/lessons').then(r => r.ok ? r.json() : null).then(j => {
+  if (Array.isArray(j) && j.length) ALL = j;
+}).catch(() => {});
+
+function pickLevel(key){
+  localStorage.setItem('dl_level', key);
+  const first = dlLevelPathList(ALL, key)[0];
+  location.href = first ? ('lesson?id=' + encodeURIComponent(first.id)) : '/path';
+}
+</script>
+</body>
+</html>
