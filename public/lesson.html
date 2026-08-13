@@ -896,8 +896,16 @@ function compQuestionHtml(question, i, answer, ko){
   const koQuestion = isChoice ? (ko && ko.q) : ko;
   const koOptions = isChoice ? (ko && ko.options) : null;
   if(isChoice){
+    // Listen reads the question AND every option aloud, one after another
+    // — same speak()/data-speak mechanism talkQuestionHtml already uses,
+    // which already supports pause/resume by tapping the same button
+    // again (see render.js's speak()) — no new pause logic needed here.
+    const compSpeakText = [qText].concat(question.options).join('. ') + '.';
     return `<div class="bigq comp">
        <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
+       <div class="talk-controls">
+         <button class="ans-btn" data-speak="${escAttr(compSpeakText)}" onclick="speak(this)" data-i18n="practice.listen">${esc(dlT('practice.listen'))}</button>
+       </div>
        <div class="comp-choices" id="compChoices${i}">${question.options.map((opt,oi)=>
          `<button class="comp-choice" id="compChoice${i}_${oi}" onclick="compChoosePick(${i},${oi})">${esc(opt)}${(koOptions && koOptions[oi])?`<span class="comp-choice-ko">${esc(koOptions[oi])}</span>`:''}</button>`).join('')}</div>
        ${answer?`<div class="comp-choice-explain" id="compExplain${i}" style="display:none;">${esc(answer)}</div>`:''}
@@ -910,6 +918,9 @@ function compQuestionHtml(question, i, answer, ko){
   // from any draft already saved, so Back/Next doesn't lose what was typed.
   return `<div class="bigq comp">
        <div class="talk-q">${esc(qText)}${koLine(koQuestion)}</div>
+       <div class="talk-controls">
+         <button class="ans-btn" data-speak="${escAttr(qText)}" onclick="speak(this)" data-i18n="practice.listen">${esc(dlT('practice.listen'))}</button>
+       </div>
        <div class="comp-write-row">
          <textarea class="comp-input" id="compIn${i}" rows="2" data-i18n-placeholder="practice.hwTypePlaceholder" placeholder="${escAttr(dlT('practice.hwTypePlaceholder'))}" oninput="COMP_DRAFTS[${i}]=this.value">${esc(COMP_DRAFTS[i]||'')}</textarea>
        </div>
