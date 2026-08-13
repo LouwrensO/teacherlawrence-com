@@ -117,7 +117,7 @@ const DL_I18N = {
 
   "home.kicker":        { en: "English, Five Minutes a Day", ko: "영어, 하루 5분" },
   "home.title":         { en: "Scared to speak English?", ko: "영어로 말하기가 두려우신가요?" },
-  "home.heroCta":       { en: "Sign up free →", ko: "무료로 가입하기 →" },
+  "home.heroCta":       { en: "Start →", ko: "시작하기 →" },
   "home.heroCtaSub":    { en: "Takes 30 seconds. No credit card needed.", ko: "30초면 충분해요. 신용카드가 필요 없습니다." },
   "home.levelLabel":    { en: "Level", ko: "레벨" },
   "home.topicLabel":    { en: "Topic", ko: "주제" },

@@ -64,12 +64,21 @@
   }
   </script>
   <script>
-  // A guest (no stored auth token) sees just the language toggle, Log in,
-  // and a Sign up CTA — Library/Path/Practice/Games and "Create your own"
-  // stay hidden until there's an account. dlReadToken() is synchronous
-  // (reads localStorage), so this runs before first paint with no flash of
-  // the full nav.
-  if(typeof dlReadToken !== 'function' || !dlReadToken()){
+  // A guest sees just the language toggle, Log in, and a Sign up CTA —
+  // Library/Path/Practice/Games and "Create your own" stay hidden until
+  // there's an account. dlReadToken() only checks whether A token STRING
+  // is sitting in storage, not whether it's still valid — a session that
+  // expired without an explicit log-out (or a signOut() call that quietly
+  // failed) leaves a stale token behind, which used to be enough to count
+  // as "not a guest" here even though account.js's real (server-verified)
+  // check correctly shows "Log in" for the same visitor. Requiring dl_uid
+  // or dl_role too — both only ever get set by an actual successful
+  // login/signup (see account.js's renderAccount(), onboard.html) and
+  // survive a real login but not a stale leftover token — closes that gap
+  // without needing an async check here (still no flash of the full nav).
+  const hasRealSession = typeof dlReadToken === 'function' && dlReadToken() &&
+    (localStorage.getItem('dl_uid') || localStorage.getItem('dl_role'));
+  if(!hasRealSession){
     const links = document.getElementById('fullNavLinks'); if(links) links.style.display='none';
     const cta = document.getElementById('createOwnLink');
     if(cta){ cta.href = '/login?mode=signup'; cta.textContent = dlT('nav.signUp'); cta.setAttribute('data-i18n','nav.signUp'); }
@@ -86,7 +95,7 @@
   <div class="hero"><div class="hero-inner">
     <div class="hero-kicker" data-i18n="home.kicker">English, Five Minutes a Day</div>
     <h1 data-i18n="home.title">Scared to speak English?</h1>
-    <a class="nav-link cta" id="heroCta" href="/login?mode=signup" data-i18n="home.heroCta" style="display:inline-block;margin-top:6px;">Sign up free →</a>
+    <a class="nav-link cta" id="heroCta" href="/login?mode=signup" data-i18n="home.heroCta" style="display:inline-block;margin-top:6px;">Start →</a>
     <p style="font-size:13px;color:var(--muted);margin-top:10px;" data-i18n="home.heroCtaSub">Takes 30 seconds. No credit card needed.</p>
   </div></div>
   <script>
