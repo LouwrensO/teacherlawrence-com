@@ -117,7 +117,7 @@ function renderLesson(L, targetId){
   const vocabText = L.vocab.map(v=>`${v.w}. ${v.d}.`).join(' ');
   h += sec(1,'Key Vocabulary','words from the text')+`<div class="vocab">`;
   h += `<button class="listen-btn" data-speak="${escAttr(vocabText)}" onclick="speak(this)">🔊 Listen to the words &amp; meanings</button>`;
-  L.vocab.forEach(v=> h+=`<div><strong>${esc(v.w)}</strong> — ${esc(v.d)}</div>`);
+  L.vocab.forEach(v=> h+=`<div><strong>${esc(capFirst(v.w))}</strong> — ${esc(v.d)}</div>`);
   h += `</div></section>`;
 
   // article (with Listen button)
@@ -257,6 +257,11 @@ function escAttr(s){return esc(s).replace(/"/g,'&quot;');}
 // gets baked into generated article prose by mistake (it belongs only in
 // the vocab list's own `p` field, never in a sentence) — see CLAUDE.md.
 function stripStrayPosTag(s){return (s||'').replace(/\s*\([a-z]{1,6}\.?\)(?=[.!?]?\s*$)/i,'');}
+// capitalizes only the first character — safe on a multi-word phrase
+// ("give up" -> "Give up"), unlike CSS text-transform:capitalize which
+// would title-case every word. Only apply to single words/phrases, never
+// full sentences.
+function capFirst(s){return s ? s.charAt(0).toUpperCase()+s.slice(1) : s;}
 
 /* ---------- read aloud: play / pause (free, built-in browser voice) ----------
    One button toggles play <-> pause and RESUMES from where it paused

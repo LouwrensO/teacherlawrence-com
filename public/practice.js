@@ -20,7 +20,7 @@ function dlSentences(t){ return (t.match(/[^.!?]+[.!?]*\s*/g) || [t]).map(s=>s.t
 function dlBuildPracticeQueue(L, T){
   const items = [];
   if(L.type==='flashcards'){
-    (L.cards||[]).forEach(c => items.push({ type:'word', text:(c.letter?c.letter+'. ':'')+c.word, emoji:c.emoji||'', ko:c.ko||'' }));
+    (L.cards||[]).forEach(c => items.push({ type:'word', text:(c.letter?c.letter+'. ':'')+capFirst(c.word), emoji:c.emoji||'', ko:c.ko||'' }));
     (L.read||[]).forEach(s => items.push({ type:'line', text: s.say || dlStripTags(s.html||''), html: s.html||'', ko:s.ko||'' }));
     // practise entries are either a plain string (older lessons) or
     // {q, options, correct} (upgraded via upgrade-discussion.html) —
@@ -30,7 +30,7 @@ function dlBuildPracticeQueue(L, T){
     (L.vocab||[]).forEach((v,i) => {
       const trEntry = T&&T.vocab&&T.vocab[i];
       const ko = (typeof trEntry==='string' ? trEntry : (trEntry&&trEntry.d)) || '';
-      items.push({ type:'word', text:v.w, sub:v.d, emoji:v.emoji||'', ko: ko });
+      items.push({ type:'word', text:capFirst(v.w), sub:v.d, emoji:v.emoji||'', ko: ko });
     });
     (L.paras||[]).forEach((p,pi) => {
       const trPara = T&&T.paras&&T.paras[pi];
