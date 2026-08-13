@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Teacher Lawrence</title>
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%235b6ef0%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial,sans-serif%27 font-size=%2734%27 font-weight=%27900%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EE%3C/text%3E%3C/svg%3E">
 <script src="pixel.js"></script>
 </head>
@@ -38,7 +38,6 @@
     <button id="tabPresent" class="on" onclick="showMode('present')" data-i18n="lesson.presentInClass">▶ Present in class</button>
     <button id="tabPdf" onclick="showMode('pdf')" data-i18n="lesson.printPdf">🖨 Print &amp; PDF</button>
     <button id="tabPractice" onclick="showMode('practice')" data-i18n="practice.tabLabel">🎙 Practice Speaking</button>
-    <button id="tabKo" class="ko-switch" style="display:none;" onclick="toggleKR()" data-i18n="lesson.translationShow">🇰🇷 Show Korean</button>
     <button id="tabAssign" class="assign-btn" style="display:none;" onclick="openAssignHomework()" data-i18n="homework.assignBtn">📌 Assign homework</button>
   </div>
 
@@ -378,7 +377,7 @@
   })();
 </script>
 <script>
-let LESSON=null, SLIDES=[], CUR=0, WS=null, KOON=false, NEXT_LESSON_ID=null;
+let LESSON=null, SLIDES=[], CUR=0, WS=null, NEXT_LESSON_ID=null;
 
 /* Real per-lesson progress — replaces the old markLessonDone(), which
    marked a lesson DONE (green, on the Path) the instant it was opened,
@@ -621,7 +620,6 @@ function computeNextLessonId(id){
   NEXT_LESSON_ID = computeNextLessonId(LESSON.id);   // where "Next lesson" goes after speaking practice
   document.title = LESSON.title + ' — Teacher Lawrence';
   document.getElementById('modeToggle').style.display='flex';
-  if(LESSON.translations && LESSON.translations.ko) document.getElementById('tabKo').style.display='inline-block';
   if(localStorage.getItem('dl_role')==='teacher') document.getElementById('tabAssign').style.display='inline-block';
   dlApplyStudentChrome();
 
@@ -629,7 +627,10 @@ function computeNextLessonId(id){
   // yet gets one generated in the background while the user reads, so
   // it's ready a few seconds later with no extra wait up front. Harmless
   // to fire more than once (server-side is idempotent once a translation
-  // exists) and cheap to skip if one's already there.
+  // exists) and cheap to skip if one's already there. Korean now shows
+  // automatically whenever it's available (no more Show/Hide toggle), so
+  // a translation that arrives after slides were already built needs an
+  // explicit rebuild+re-render here to actually appear without a reload.
   if(LESSON.type !== 'flashcards' && !(LESSON.translations && LESSON.translations.ko)){
     fetch('/api/translate', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -638,8 +639,8 @@ function computeNextLessonId(id){
       if(j && j.ok && j.data){
         LESSON.translations = LESSON.translations || {};
         LESSON.translations.ko = j.data;
-        const tk = document.getElementById('tabKo');
-        if(tk) tk.style.display = 'inline-block';
+        SLIDES = buildSlides(LESSON);
+        go(CUR);
       }
     }).catch(()=>{});
   }
@@ -684,8 +685,6 @@ function computeNextLessonId(id){
 
   const prevLangHook = window.dlOnLangChange;
   window.dlOnLangChange = (lang) => {
-    const b = document.getElementById('tabKo');
-    if (b) { b.textContent = dlT(KOON ? 'lesson.translationHide' : 'lesson.translationShow'); }
     SLIDES = (LESSON.type==='flashcards') ? buildFlashcardSlides(LESSON) : buildSlides(LESSON);
     go(CUR);
     if (prevLangHook) prevLangHook(lang);
@@ -745,8 +744,9 @@ function buildSlides(L){
        <h2>${esc(L.title)}</h2>
      </div>` });
 
-  // Korean translation (only when the KR switch is ON and a translation exists)
-  const T = (KOON && L.translations && L.translations.ko) ? L.translations.ko : null;
+  // Korean translation — shown automatically, small, under the English,
+  // whenever one exists (no more Show/Hide Korean toggle button).
+  const T = (L.translations && L.translations.ko) ? L.translations.ko : null;
   const koLine = (s) => s ? `<div class="ko-line">${esc(s)}</div>` : '';
   // vocab translations used to be a flat array of definition strings; now each
   // entry is {w,d} so the Korean word itself can be shown too. Stay defensive
@@ -1034,19 +1034,12 @@ function buildFlashcardSlides(L){
     ? `<img class="hero-photo" src="${escAttr(L.image)}" alt="${escAttr(L.imageAlt||L.title)}">`
     : `<div class="big-icon">${L.icon||'🔤'}</div>`;
 
-  // 0 — start
+  // 0 — start (same stripped-down cover as buildSlides() above: just the
+  // picture and heading, no summary/hint/teacher-notes card)
   slides.push({ label:dlT('lesson.stepStart'), body:
     `<div class="start-screen">
        ${heroVisual}
-       <div class="slide-kicker">${esc(L.kicker)}</div>
        <h2>${esc(L.title)}</h2>
-       <p class="slide-hint">${esc(L.intro||L.summary||'')}</p>
-       <p class="slide-hint">${dlT('lesson.pressStartShort')}</p>
-       ${startCard(
-         `<p><b>Warm-up:</b> Show each picture and say the word. Ask the class to repeat.</p>
-          <p><b>Game:</b> Say a word and have students point to the matching picture.</p>`,
-         `<p>${dlT('lesson.goalsFlowFlashcard')}</p>`
-       )}
      </div>` });
 
   let step=0; const K=()=>dlT('lesson.stepPrefix')+' '+(++step);
@@ -1204,7 +1197,7 @@ function go(i){
   STEP_ENTER_TS = Date.now();
   const s=SLIDES[i];
   let head='';
-  if(s.title){ head = `<div class="slide-kicker">${esc(s.kicker||'')}</div><h2>${esc(s.title)}</h2>${s.hint?`<p class="slide-hint">${esc(s.hint)}</p>`:''}`; }
+  if(s.title){ head = `<div class="slide-kicker">${esc(s.kicker||'')}</div><h2>${esc(s.title)}</h2>`; }
   document.getElementById('slide').innerHTML = head + s.body;
   updateStepsCurrent((i+1)+' / '+SLIDES.length+' — '+(s.label||''));
   document.getElementById('prevBtn').disabled = (i===0);
@@ -1235,16 +1228,6 @@ function nextAction(){
   location.href = NEXT_LESSON_ID ? ('lesson?id='+encodeURIComponent(NEXT_LESSON_ID)) : '/';
 }
 
-/* global Korean switch — turns Korean on/off across the whole lesson */
-function toggleKR(){
-  KOON = !KOON;
-  const b = document.getElementById('tabKo');
-  b.textContent = dlT(KOON ? 'lesson.translationHide' : 'lesson.translationShow');
-  b.removeAttribute('data-i18n');
-  b.classList.toggle('on', KOON);
-  SLIDES = (LESSON.type==='flashcards') ? buildFlashcardSlides(LESSON) : buildSlides(LESSON);
-  go(CUR);
-}
 
 /* ---------- answer reveal (comprehension + scramble) ---------- */
 function revealAnswer(i){
