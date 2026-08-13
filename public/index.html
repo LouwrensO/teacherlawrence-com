@@ -48,6 +48,17 @@
   <script type="module" src="account.js"></script>
   <script>document.getElementById('langSwitch').innerHTML = dlLangSwitchHtml();</script>
   <script>
+  // A signed-in student on the locked path has no reason to land on the
+  // open Library (typing "/", tapping the brand logo, a bookmark, browser
+  // homepage, etc. all end up here) — same "path IS the app" rule as
+  // path.html/lesson.html's dlApplyStudentChrome(). Both reads are
+  // synchronous localStorage lookups, so this runs before first paint —
+  // no flash of Library content for a returning student.
+  if(typeof dlReadToken === 'function' && dlReadToken() && localStorage.getItem('dl_role') === 'student'){
+    location.replace('/path');
+  }
+  </script>
+  <script>
   // A guest (no stored auth token) sees just the language toggle, Log in,
   // and a Sign up CTA — Library/Path/Practice/Games and "Create your own"
   // stay hidden until there's an account. dlReadToken() is synchronous
