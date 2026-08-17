@@ -5,10 +5,12 @@
 //      streak/calendar — no server, no accounts required, matches the
 //      "5 minutes a day" habit-building goal without any privacy cost
 //
-// IMPORTANT: nothing recorded by the microphone in Practice Speaking mode
-// is ever uploaded or stored anywhere — it's played back to the student
-// for their own self-check, then discarded. Only the TIME SPENT
-// practicing is logged (as a date + seconds), never the audio itself.
+// IMPORTANT: raw audio from the microphone in Practice Speaking mode is
+// never uploaded or stored anywhere. TIME SPENT practicing is always
+// logged (as a date + seconds). If a student turns on the optional
+// whole-session Record button (soloRecorder/articleRecorder in
+// lesson.html), the browser's own speech-to-text TRANSCRIPT — text only,
+// never audio — is sent to /api/speak-chat for one overall score.
 
 function dlStripTags(s){ return (s||'').replace(/<[^>]+>/g,''); }
 function dlSentences(t){ return (t.match(/[^.!?]+[.!?]*\s*/g) || [t]).map(s=>s.trim()).filter(Boolean); }

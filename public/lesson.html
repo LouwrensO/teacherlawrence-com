@@ -118,7 +118,9 @@
        clean, single-purpose screen (no in-screen toggle — switching means
        going back to the sidebar) —
        (1) solo drill: one word / sentence / question at a time, with listen
-           + local-only record-and-playback (never uploaded)
+           + an optional whole-session recording (soloRecorder, below) that
+           transcribes speech locally (never uploads audio) and sends the
+           TEXT to /api/speak-chat for one overall completion/effort score
        (2) Talk with AI: a short spoken-style back-and-forth about the
            lesson, transcribed via the browser's speech recognition (or
            typed as a fallback) and answered by /api/speak-chat.
@@ -141,6 +143,23 @@
           <button class="practice-btn" id="pPrevBtn" onclick="practiceGo(P_IDX-1)" data-i18n="practice.prev">← Back</button>
           <button class="practice-btn primary" id="pNextBtn" onclick="practiceGo(P_IDX+1)" data-i18n="practice.next">Next →</button>
         </div>
+
+        <!-- whole-session recorder (see createSessionRecorder()/soloRecorder
+             below) — the floating record/stop button is the only control;
+             this block just shows its status/result and persists across
+             Back/Next since it sits outside practiceRender()'s per-card
+             show/hide list. -->
+        <div class="practice-privacy" data-i18n="practice.privacyNote"></div>
+        <div class="session-rec-row">
+          <div class="chat-mic-note" id="pMicNote" style="display:none;" data-i18n="practice.sessionMicNote"></div>
+        </div>
+        <div class="scoring-indicator" id="pScoring" style="display:none;" data-i18n="practice.hwScoring">Scoring…</div>
+        <div class="hw-result" id="pResult" style="display:none;">
+          <div class="hw-score" id="pScoreText"></div>
+          <div class="hw-feedback" id="pFeedbackText"></div>
+        </div>
+        <div class="chat-error" id="pError" style="display:none;"></div>
+
         <div class="practice-done" id="pDone" style="display:none;">
           <h2 data-i18n="practice.doneTitle">🎉 Great practice!</h2>
           <p data-i18n="practice.doneBody">You practiced speaking for this whole lesson. Come back tomorrow to keep your streak going!</p>
@@ -1615,10 +1634,12 @@ function initGamesSlide(){
 
 /* ============================================================
    PRACTICE SPEAKING — one item (word / sentence / question) at a
-   time. Listen (reuses the existing TTS speak()), then record
-   yourself and hear it back immediately. Nothing recorded is ever
-   uploaded or saved anywhere — only the TIME spent practicing is
-   logged locally, to power the streak/calendar on the Path page.
+   time. Listen (reuses the existing TTS speak()). Time spent practicing
+   is always logged locally (streak/calendar on the Path page); if the
+   student turns on the floating Record button, soloRecorder (a
+   createSessionRecorder() instance, defined near articleRecorder below)
+   also transcribes the whole session and sends the text — never the
+   audio itself — to /api/speak-chat for one overall score + feedback.
    ============================================================ */
 let P_QUEUE = [], P_IDX = 0;
 let P_SESSION_START = null;
@@ -1799,8 +1820,19 @@ function chatOnMuteChange(){
   CHAT_MUTED = document.getElementById('chatMuteBox').checked;
   if(CHAT_MUTED && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 }
-function chatShowError(msg){
+// A guest can browse a whole lesson with no account, then hit this the
+// moment they try an AI feature (it costs real money per call, so it's
+// the one place login is actually required). A dead-end red error there
+// was losing students who'd already invested time in the lesson — this
+// gives them a one-tap way to sign up without leaving the page, taking
+// them right back here afterwards via /login's ?next= param.
+function dlLoginCtaHtml(){
+  const next = encodeURIComponent(location.pathname + location.search);
+  return esc(dlT('practice.chatLoginNeeded')) + ' <a href="/login?mode=signup&next=' + next + '" style="color:inherit;text-decoration:underline;font-weight:800;">' + esc(dlT('nav.signUp')) + '</a>';
+}
+function chatShowError(msg, isHtml){
   const el = document.getElementById('chatError');
+  if(isHtml){ el.innerHTML = msg; el.style.display = 'block'; return; }
   el.textContent = msg;
   el.style.display = 'block';
 }
@@ -1825,7 +1857,7 @@ async function chatSendMessage(text){
   chatSetSending(true);
   try{
     const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
-    if(!token){ chatShowError(dlT('practice.chatLoginNeeded')); return; }
+    if(!token){ chatShowError(dlLoginCtaHtml(), true); return; }
     const isFlashcards = LESSON.type === 'flashcards';
     const ctx = {
       title: LESSON.title,
@@ -2737,7 +2769,7 @@ function createSessionRecorder(cfg){
     scoringEl.scrollIntoView({ behavior:'smooth', block:'center' });
     try{
       const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
-      if(!token){ showError(dlT('practice.chatLoginNeeded')); return; }
+      if(!token){ showError(dlLoginCtaHtml(), true); return; }
       const expectedItems = cfg.getExpectedItems();
       const secondsSpent = Math.round((Date.now() - startTime) / 1000);
       const itemsTotal = expectedItems.length;
@@ -2776,10 +2808,10 @@ function createSessionRecorder(cfg){
     if(cfg.onStop) cfg.onStop();
   }
 
-  function showError(msg){
+  function showError(msg, isHtml){
     document.getElementById(cfg.scoringId).style.display = 'none';
     const el = document.getElementById(cfg.errorId);
-    el.textContent = msg;
+    if(isHtml) el.innerHTML = msg; else el.textContent = msg;
     el.style.display = 'block';
   }
 
@@ -2797,13 +2829,26 @@ const articleRecorder = createSessionRecorder({
   progressStep: 'read'
 });
 
-// One floating button, one recorder at a time: only Read the Article uses
-// it now (the solo drill's own whole-session recorder was removed — it's
-// a plain listen-and-review screen). Called after every slide change and
-// every Present/PDF/Practice + submode switch.
-const SESSION_RECORDERS = { article: articleRecorder };
+// "On your own" (solo drill) instance — records the whole review pass
+// (every word/sentence/question in P_QUEUE) instead of per-item turns.
+// No progressStep: this is a bonus review mode outside the locked-path
+// step gating, same as Talk with AI.
+const soloRecorder = createSessionRecorder({
+  resultId:'pResult', scoreTextId:'pScoreText',
+  feedbackTextId:'pFeedbackText', scoringId:'pScoring', errorId:'pError',
+  micNoteId:'pMicNote', recordLabelKey:'practice.sessionRecord', finishLabelKey:'practice.sessionFinish',
+  getExpectedItems: () => P_QUEUE.map(it => it.text),
+  getContext: () => ({ title: LESSON.title, topic: LESSON.kicker || '' }),
+  getItemsAttempted: () => Math.min(P_IDX + 1, P_QUEUE.length)
+});
+
+// One floating button, one recorder at a time — Read the Article and the
+// solo drill each get it while their own screen is current. Called after
+// every slide change and every Present/PDF/Practice + submode switch.
+const SESSION_RECORDERS = { article: articleRecorder, solo: soloRecorder };
 function currentRecordingScreenKey(){
   if(document.getElementById('presentView').style.display !== 'none' && SLIDES[CUR] && SLIDES[CUR].articleRecorder) return 'article';
+  if(document.getElementById('practiceView').style.display !== 'none' && P_MODE === 'solo') return 'solo';
   return null;
 }
 function syncFloatingRecBtn(){

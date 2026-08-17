@@ -71,7 +71,7 @@ async function renderAccount() {
   if (!el) return;
   const { data: { user } } = await supabase.auth.getUser();
   const role = localStorage.getItem("dl_role");
-  if (user || role) {
+  if (user) {
     const t = (typeof window.dlT === 'function') ? window.dlT : (k) => k;
     const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
     // prefer the name the parent gave a child (in user metadata); fall back

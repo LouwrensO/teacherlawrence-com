@@ -40,6 +40,16 @@
   function stripStrayPosTag(s) {
     return (s == null ? '' : String(s)).replace(/\s*\((?:n|v|vi|vt|adj|adv|prep|conj|pron|det|interj|aux)\.?\)/gi, '');
   }
+  // vocab words/definitions come back from lesson generation lowercase
+  // (e.g. "seed", "a small part of a plant..."), which reads oddly as
+  // standalone card/tile/hint text even though it's fine inline in a
+  // sentence. Applied once here at the source (not per render site) so
+  // every game (Memory, Match-Up, Scramble's hint) gets it automatically;
+  // ko is left alone (no such thing as capitalization in Korean).
+  function capFirst(s) {
+    s = String(s || '');
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
 
   // say a bit of text aloud (free, built-in browser voice). Called when a
   // card/tile is tapped so the student hears what's on it — the English word,
@@ -116,7 +126,7 @@
     if (L.type === 'flashcards') {
       (L.cards || []).forEach(function (c) {
         if (!c || !c.word) return;
-        items.push({ word: c.word, emoji: c.emoji || '', ko: c.ko || '', meaning: '' });
+        items.push({ word: capFirst(c.word), emoji: c.emoji || '', ko: c.ko || '', meaning: '' });
       });
     } else {
       (L.vocab || []).forEach(function (v, i) {
@@ -133,7 +143,7 @@
         // quantity of something" instead of the Korean word itself).
         const trEntry = Tr && Tr.vocab && Tr.vocab[i];
         const ko = (typeof trEntry === 'string' ? trEntry : (trEntry && trEntry.w)) || v.ko || '';
-        items.push({ word: v.w, emoji: v.emoji || '', ko: ko, meaning: v.d || '' });
+        items.push({ word: capFirst(v.w), emoji: v.emoji || '', ko: ko, meaning: capFirst(v.d || '') });
       });
     }
     return {
@@ -153,7 +163,7 @@
     if (Tr && Tr.paras) {
       Tr.paras.forEach(function (para) {
         (para || []).forEach(function (s) {
-          if (s && s.en && s.ko) items.push({ word: stripStrayPosTag(s.en), emoji: '', ko: s.ko, meaning: '' });
+          if (s && s.en && s.ko) items.push({ word: capFirst(stripStrayPosTag(s.en)), emoji: '', ko: s.ko, meaning: '' });
         });
       });
     }
