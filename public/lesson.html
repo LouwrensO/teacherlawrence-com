@@ -1376,21 +1376,36 @@ function nextAction(){
 
 
 /* ---------- answer reveal (comprehension + scramble) ---------- */
-function revealAnswer(i){
+// fillInputId is optional and Word Scramble-only (see scramRowHtml below) —
+// when given, showing the answer also fills that input with its own
+// data-target instead of only showing the separate answer line, so the
+// revealed word lands right in the box the student is typing into.
+function revealAnswer(i, fillInputId){
   const a=document.getElementById('ans'+i), b=document.getElementById('ansbtn'+i);
   if(!a) return;
   const show = !a.classList.contains('show');
   a.classList.toggle('show', show);
   if(b) b.textContent = show ? 'Hide answer' : 'Show answer';
+  if(fillInputId && show){
+    const input = document.getElementById(fillInputId);
+    if(input){ input.value = input.dataset.target || input.value; input.focus(); }
+  }
 }
-/* progressive hint: reveal one more letter of the answer each press */
+/* progressive hint: reveal one more letter of the answer each press,
+   straight into the input box itself (used to write a separate
+   "H E _ _ _" line elsewhere on the page, which read as disconnected from
+   the box actually being typed into) — so the student can just keep
+   typing on from there. */
 var HINTN={};
 function scramHint(i, word){
   HINTN[i] = Math.min((HINTN[i]||0)+1, word.length);
   const n = HINTN[i];
-  const shown = word.slice(0,n).split('').join(' ');
-  const rest = Array(Math.max(0,word.length-n)).fill('_').join(' ');
-  document.getElementById('hint'+i).textContent = (shown + (rest?'  '+rest:'')).trim();
+  const input = document.getElementById('scramIn'+i);
+  if(input){
+    input.value = word.slice(0, n);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
 }
 
 /* Word Scramble: single-row markup (one word to unscramble per screen —
@@ -1415,8 +1430,7 @@ function scramRowHtml(v, i){
         <button class="scram-check-all" onclick="scramCheck(${i})" data-i18n="lesson.checkOne">${esc(dlT('lesson.checkOne'))}</button>
         <span class="scram-feedback" id="scramFb${i}"></span>
         <button class="ans-btn hint-btn" onclick="scramHint(${i},'${esc(target)}')">💡 Hint</button>
-        <button class="ans-btn" onclick="revealAnswer(${i})" id="ansbtn${i}">Show answer</button>
-        <span class="hint-show" id="hint${i}"></span>
+        <button class="ans-btn" onclick="revealAnswer(${i}, 'scramIn${i}')" id="ansbtn${i}">Show answer</button>
         <span class="answer" id="ans${i}">= ${esc(target)}</span></div>
      <div class="scram-summary" id="scramSummary" style="display:none;"></div>
    </div>`;

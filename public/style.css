@@ -234,8 +234,11 @@ a{color:inherit;text-decoration:none;}
 .answer{display:none;margin-top:8px;font-family:Helvetica,Arial,sans-serif;font-size:18px;color:var(--accent2);font-weight:700;}
 .answer.show{display:block;}
 .scram-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--soft);}
-.scram-row .answer{display:none;margin-top:0;}
-.scram-row .answer.show{display:inline-block;}
+/* stays hidden even when .show gets toggled by revealAnswer() — the
+   revealed word now fills #scramIn${i} directly instead (see
+   scramRowHtml()/revealAnswer() in lesson.html), so this line never
+   needs to show separately for scramble rows. */
+.scram-row .answer{display:none!important;margin-top:0;}
 .scram-input{font-family:Helvetica,Arial,sans-serif;font-size:16px;text-transform:uppercase;padding:8px 12px;border-radius:10px;border:2px solid var(--grid);width:160px;}
 .scram-input:focus{outline:none;border-color:var(--accent);}
 .scram-row.correct .scram-input{border-color:var(--accent2);background:#eefaf3;color:var(--accent2);}
@@ -281,7 +284,6 @@ table.wsplay td.found{background:#ffd3c9;color:#c0392b;font-weight:800;}
 .ws-words li.struck{text-decoration:line-through;color:#c0392b;}
 .ws-done{font-family:'Arial Black',sans-serif;color:var(--accent2);font-size:18px;margin-top:16px;}
 table.wsplay td.hint{background:#fff3c4;box-shadow:inset 0 0 0 2px var(--gold);}
-.hint-show{font-family:'Courier New',monospace;letter-spacing:3px;font-weight:700;font-size:20px;color:var(--accent2);}
 
 /* ---- beginner flashcards (present mode) ---- */
 .fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:6px;}
