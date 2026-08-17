@@ -2476,6 +2476,19 @@ async function lessonRepaintResults(){
 
   if(!max){ el.innerHTML = `<div class="lesson-score-total">${esc(dlT('practice.lessonScoreNone'))}</div>`; return; }
   const pct = Math.round((sum/max)*100);
+  // A guest's score never actually gets saved anywhere (dlSaveLessonScore
+  // below no-ops without a token) — showing a number that vanishes the
+  // moment they close the tab reads as pointless/discouraging. Show an
+  // encouraging sign-up prompt instead; a logged-in student still sees
+  // the real breakdown as before.
+  const token = (typeof dlReadToken === 'function') ? dlReadToken() : null;
+  if(!token){
+    const next = encodeURIComponent(location.pathname + location.search);
+    el.innerHTML = `<div class="lesson-score-total">${esc(dlT('practice.lessonScoreGuestTitle'))}</div>` +
+      `<div class="lesson-score-breakdown">${esc(dlT('practice.lessonScoreGuestBody'))} ` +
+      `<a href="/login?mode=signup&next=${next}" style="color:inherit;text-decoration:underline;font-weight:800;">${esc(dlT('nav.signUp'))}</a></div>`;
+    return;
+  }
   const breakdown = parts.map(p =>
     esc(p.label)+': '+p.sum+'/'+p.max+(p.missing ? ' ('+p.missing+' '+esc(dlT('practice.lessonScoreMissing'))+')' : '')
   ).join(' · ');
