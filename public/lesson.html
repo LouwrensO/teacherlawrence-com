@@ -142,13 +142,18 @@
           <button class="practice-btn" id="pListenBtn" onclick="practiceListen()" data-i18n="practice.listen">▶ Listen</button>
           <button class="practice-btn" id="pPrevBtn" onclick="practiceGo(P_IDX-1)" data-i18n="practice.prev">← Back</button>
           <button class="practice-btn primary" id="pNextBtn" onclick="practiceGo(P_IDX+1)" data-i18n="practice.next">Next →</button>
+          <!-- #floatingRecBtn gets reparented in here (see
+               createSessionRecorder's recBtnSlotId/showFloatingRecBtn) so it
+               sits right alongside Listen/Back/Next instead of floating
+               disconnected in a screen corner. -->
+          <span id="pRecBtnSlot" class="rec-btn-slot"></span>
         </div>
 
         <!-- whole-session recorder (see createSessionRecorder()/soloRecorder
-             below) — the floating record/stop button is the only control;
-             this block just shows its status/result and persists across
-             Back/Next since it sits outside practiceRender()'s per-card
-             show/hide list. -->
+             below) — the record/stop button now lives in .practice-controls
+             above; this block just shows its status/result and persists
+             across Back/Next since it sits outside practiceRender()'s
+             per-card show/hide list. -->
         <div class="practice-privacy" data-i18n="practice.privacyNote"></div>
         <div class="session-rec-row">
           <div class="chat-mic-note" id="pMicNote" style="display:none;" data-i18n="practice.sessionMicNote"></div>
@@ -814,13 +819,25 @@ function buildSlides(L){
     ? `<div class="big ko-article" id="articleKoBlock">${T.paras.map(par=>
          `<p>${par.map(s=>`<span class="sen"><span class="en">${esc(stripStrayPosTag(s.en))}</span><span class="ko">${esc(s.ko)}</span></span>`).join(' ')}</p>`).join('')}</div>`
     : `<div class="big">${L.paras.map(p=>`<p>${stripStrayPosTag(p)}</p>`).join('')}</div>`;
+  // Listen (Play) + Record deliberately sit in normal document flow, AFTER
+  // the article text, not floating on top of it — an earlier fixed/floating
+  // version covered the last couple of lines of text while scrolling and
+  // read as cluttered; simple and at the end of the reading is what was
+  // asked for instead. Back/Next (.slide-nav) follows right after this in
+  // the DOM (see the persistent markup around #presentView) and is plain
+  // in-flow too, so all four controls end up together, in order, once the
+  // student finishes reading — no fixed-position math needed anymore.
   slides.push({ label:dlT('lesson.stepReadArticle'), kicker:dlT('lesson.stepPrefix')+' 3', title:dlT('lesson.stepReadArticle'), hint:dlT('lesson.hintReadArticle'), articleRecorder:true, body:
-    `<div class="player">
-       <button class="play-btn" data-speak="${escAttr(articleText)}" onclick="speak(this)">▶</button>
-       <div class="player-track"><div class="player-fill" id="speakFill"></div></div>
-       <div class="player-time" id="speakTime"></div>
+    `${(T && T.paras) ? `<div class="talk-controls"><button class="ans-btn ko-switch" id="articleKoToggle" onclick="toggleArticleKo()">${esc(dlT('lesson.translationShow'))}</button></div>` : ''}
+     ${articleHtml}
+     <div class="rec-row">
+       <div class="player">
+         <button class="play-btn" data-speak="${escAttr(articleText)}" onclick="speak(this)">▶</button>
+         <div class="player-track"><div class="player-fill" id="speakFill"></div></div>
+         <div class="player-time" id="speakTime"></div>
+       </div>
+       <span id="artRecBtnSlot" class="rec-btn-slot"></span>
      </div>
-     ${(T && T.paras) ? `<div class="talk-controls"><button class="ans-btn ko-switch" id="articleKoToggle" onclick="toggleArticleKo()">${esc(dlT('lesson.translationShow'))}</button></div>` : ''}
      <div class="session-rec-row">
        <div class="chat-mic-note" id="artMicNote" style="display:none;" data-i18n="practice.sessionMicNote">Whole-session AI feedback isn't supported in this browser — you can still listen and self-check as usual.</div>
      </div>
@@ -829,8 +846,7 @@ function buildSlides(L){
        <div class="hw-score" id="artScoreText"></div>
        <div class="hw-feedback" id="artFeedbackText"></div>
      </div>
-     <div class="chat-error" id="artError" style="display:none;"></div>
-     ${articleHtml}` });
+     <div class="chat-error" id="artError" style="display:none;"></div>` });
 
   // 4 — comprehension: one question per screen. The student writes an
   // actual answer in a text box; it's scored together with everything
@@ -1319,7 +1335,16 @@ function go(i){
   const s=SLIDES[i];
   let head='';
   if(s.title){ head = `<div class="slide-kicker">${esc(s.kicker||'')}</div><h2>${esc(s.title)}</h2>`; }
-  document.getElementById('slide').innerHTML = head + s.body;
+  // #floatingRecBtn gets moved (via showFloatingRecBtn's slotId reparenting,
+  // see createSessionRecorder) into whichever screen currently wants it —
+  // if that's this slide, rescue the actual node out to <body> first, since
+  // overwriting #slide's innerHTML would otherwise delete it outright
+  // (it'd just be gone — not returned to wherever it came from). Harmless
+  // no-op when the button lives elsewhere (practice screen, or not shown).
+  const slideEl = document.getElementById('slide');
+  const frb = document.getElementById('floatingRecBtn');
+  if(frb && slideEl.contains(frb)) document.body.appendChild(frb);
+  slideEl.innerHTML = head + s.body;
   updateStepsCurrent((i+1)+' / '+SLIDES.length+' — '+(s.label||''));
   document.getElementById('prevBtn').disabled = (i===0);
   const nb=document.getElementById('nextBtn');
@@ -2563,16 +2588,23 @@ async function compScoreAnswer(i, answer){
    and the Read the Article step; more steps can reuse it the same way.
 
    cfg: { resultId, scoreTextId, feedbackTextId, scoringId,
-     errorId, micNoteId, recordLabelKey, finishLabelKey,
+     errorId, micNoteId, recordLabelKey, finishLabelKey, recBtnSlotId,
      getExpectedItems(), getContext(), getItemsAttempted()?,
      onStart()?, onStop()? }
    ============================================================ */
-// shared floating stop button (one at a time — only one recorder is
-// ever active) so a student can always reach "Finish" even after
-// scrolling past the inline record button, e.g. deep into a long article
-function showFloatingRecBtn(label, onClick, active){
+// shared record/stop button (one at a time — only one recorder is ever
+// active). Used to be position:fixed to the viewport corner so it stayed
+// reachable while scrolling a long article; that read as cluttered
+// floating on top of the text, so it now lives in normal document flow
+// instead — reparented (via cfg.recBtnSlotId) into whichever screen's own
+// controls row currently wants it, right next to Listen/Back/Next.
+function showFloatingRecBtn(label, onClick, active, slotId){
   const btn = document.getElementById('floatingRecBtn');
   if(!btn) return;
+  if(slotId){
+    const slot = document.getElementById(slotId);
+    if(slot && btn.parentNode !== slot) slot.appendChild(btn);
+  }
   btn.setAttribute('aria-label', label);
   btn.title = label;
   btn.onclick = onClick;
@@ -2615,7 +2647,7 @@ function createSessionRecorder(cfg){
     const note = document.getElementById(cfg.micNoteId);
     const ok = micSupported();
     if(note) note.style.display = ok ? 'none' : 'block';
-    if(ok) showFloatingRecBtn(dlT(active ? cfg.finishLabelKey : cfg.recordLabelKey), toggle, active);
+    if(ok) showFloatingRecBtn(dlT(active ? cfg.finishLabelKey : cfg.recordLabelKey), toggle, active, cfg.recBtnSlotId);
     else hideFloatingRecBtn();
   }
 
@@ -2634,7 +2666,7 @@ function createSessionRecorder(cfg){
     if(cfg.onStart) cfg.onStart();
     document.getElementById(cfg.resultId).style.display = 'none';
     document.getElementById(cfg.errorId).style.display = 'none';
-    showFloatingRecBtn(dlT(cfg.finishLabelKey), toggle, true);
+    showFloatingRecBtn(dlT(cfg.finishLabelKey), toggle, true, cfg.recBtnSlotId);
     recogStart();
     startTtsWatch();
   }
@@ -2750,7 +2782,7 @@ function createSessionRecorder(cfg){
     await stopRecogAndWaitForFinal();
     // still on the same screen after Finish — leave the floating button up,
     // just back in its idle "Record" state, rather than hiding it outright
-    if(micSupported()) showFloatingRecBtn(dlT(cfg.recordLabelKey), toggle, false);
+    if(micSupported()) showFloatingRecBtn(dlT(cfg.recordLabelKey), toggle, false, cfg.recBtnSlotId);
     else hideFloatingRecBtn();
     if(cfg.onStop) cfg.onStop();
 
@@ -2824,6 +2856,7 @@ const articleRecorder = createSessionRecorder({
   resultId:'artResult', scoreTextId:'artScoreText',
   feedbackTextId:'artFeedbackText', scoringId:'artScoring', errorId:'artError',
   micNoteId:'artMicNote', recordLabelKey:'practice.artRecord', finishLabelKey:'practice.sessionFinish',
+  recBtnSlotId:'artRecBtnSlot',
   getExpectedItems: () => (LESSON && LESSON.paras) ? speakSentences(stripStrayPosTag(stripTags(LESSON.paras.join(' ')))).slice(0, 80) : [],
   getContext: () => ({ title: LESSON.title, topic: LESSON.kicker || '' }),
   progressStep: 'read'
@@ -2837,6 +2870,7 @@ const soloRecorder = createSessionRecorder({
   resultId:'pResult', scoreTextId:'pScoreText',
   feedbackTextId:'pFeedbackText', scoringId:'pScoring', errorId:'pError',
   micNoteId:'pMicNote', recordLabelKey:'practice.sessionRecord', finishLabelKey:'practice.sessionFinish',
+  recBtnSlotId:'pRecBtnSlot',
   getExpectedItems: () => P_QUEUE.map(it => it.text),
   getContext: () => ({ title: LESSON.title, topic: LESSON.kicker || '' }),
   getItemsAttempted: () => Math.min(P_IDX + 1, P_QUEUE.length)
