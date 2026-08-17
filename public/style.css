@@ -188,7 +188,11 @@ a{color:inherit;text-decoration:none;}
 .slide .bigq.talk-list{padding-bottom:20px;}
 .slide .talk-q{margin-bottom:10px;}
 .slide .talk-controls{display:flex;gap:10px;flex-wrap:wrap;font-size:15px;font-weight:700;margin-bottom:10px;}
-.slide .talk-controls .chat-mic-btn{font-size:14px;padding:9px 16px;}
+/* Record (.chat-mic-btn) sits right next to Listen (.ans-btn) here — match
+   .ans-btn's own size/font/border exactly instead of the bigger, blue-
+   bordered default .chat-mic-btn look used elsewhere (Talk with AI's own
+   mic button, Live Voice) so the two read as one consistent pair. */
+.slide .talk-controls .chat-mic-btn{font-size:13px;font-weight:700;padding:4px 12px;border-radius:16px;border:1px solid var(--grid);color:var(--accent);}
 .slide .hw-transcript,.slide .hw-result,.slide .chat-error{font-size:15px;}
 .slide .scram-big{font-family:'Courier New',monospace;letter-spacing:5px;font-weight:700;font-size:30px;padding:14px 0;border-bottom:1px solid var(--soft);}
 .slide .start-screen{text-align:center;padding:50px 10px;}
